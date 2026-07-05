@@ -13,13 +13,81 @@ const edgeTypes = { floating: FloatingEdge };
 const PALETTES = {
   dark: {
     nodeBg: "#14161b", nodeBorder: "#323644", nodeText: "#edeff3", dot: "#23262e",
-    edge: "#565d6d", typed: "#93a0ff", mask: "rgba(11,12,15,0.7)",
+    edge: "#565d6d", typed: "#93a0ff", parent: "#3a3f4d", mask: "rgba(11,12,15,0.7)",
   },
   light: {
     nodeBg: "#ffffff", nodeBorder: "#c2cad7", nodeText: "#14181f", dot: "#d3d9e2",
-    edge: "#9aa2b0", typed: "#4f5fe0", mask: "rgba(232,234,239,0.7)",
+    edge: "#9aa2b0", typed: "#4f5fe0", parent: "#c7cedb", mask: "rgba(232,234,239,0.7)",
   },
 };
+
+// Lightweight, deterministic force-directed layout (no external deps).
+// Seeds nodes on a circle, then relaxes: nodes repel each other, edges act as
+// springs, and a mild pull keeps the whole thing centred. Connected nodes cluster;
+// orphans drift to the edge. Deterministic (no randomness) so the layout is stable.
+function forceLayout(ids: string[], edges: Array<[number, number]>) {
+  const n = ids.length;
+  const px = new Float64Array(n);
+  const py = new Float64Array(n);
+  const seedR = Math.max(200, n * 12);
+  for (let i = 0; i < n; i++) {
+    const a = (2 * Math.PI * i) / Math.max(n, 1);
+    px[i] = seedR * Math.cos(a);
+    py[i] = seedR * Math.sin(a);
+  }
+
+  const iterations = n > 250 ? 120 : 320;
+  const REST = 130, SPRING = 0.02, REPULSE = 9000, CENTER = 0.012, STEP = 0.85, MAX_MOVE = 60;
+  const fx = new Float64Array(n);
+  const fy = new Float64Array(n);
+
+  for (let it = 0; it < iterations; it++) {
+    const cool = 1 - it / iterations;
+    fx.fill(0);
+    fy.fill(0);
+
+    // repulsion between every pair (O(n²) — fine for a personal base)
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        let dx = px[i] - px[j];
+        let dy = py[i] - py[j];
+        let d2 = dx * dx + dy * dy;
+        if (d2 < 0.01) { dx = 1; dy = 1; d2 = 2; }
+        const d = Math.sqrt(d2);
+        const f = REPULSE / d2;
+        const ux = dx / d, uy = dy / d;
+        fx[i] += ux * f; fy[i] += uy * f;
+        fx[j] -= ux * f; fy[j] -= uy * f;
+      }
+    }
+
+    // springs along edges
+    for (const [s, t] of edges) {
+      const dx = px[t] - px[s];
+      const dy = py[t] - py[s];
+      const d = Math.sqrt(dx * dx + dy * dy) || 0.01;
+      const f = (d - REST) * SPRING;
+      const ux = dx / d, uy = dy / d;
+      fx[s] += ux * f; fy[s] += uy * f;
+      fx[t] -= ux * f; fy[t] -= uy * f;
+    }
+
+    // centring + integrate (with cooling and a per-step cap)
+    for (let i = 0; i < n; i++) {
+      fx[i] -= px[i] * CENTER;
+      fy[i] -= py[i] * CENTER;
+      let mx = fx[i] * STEP * cool;
+      let my = fy[i] * STEP * cool;
+      mx = Math.max(-MAX_MOVE, Math.min(MAX_MOVE, mx));
+      my = Math.max(-MAX_MOVE, Math.min(MAX_MOVE, my));
+      px[i] += mx; py[i] += my;
+    }
+  }
+
+  const pos = new Map<string, { x: number; y: number }>();
+  for (let i = 0; i < n; i++) pos.set(ids[i], { x: px[i] + 400, y: py[i] + 320 });
+  return pos;
+}
 
 export default function GraphPage() {
   const navigate = useNavigate();
@@ -31,28 +99,67 @@ export default function GraphPage() {
 
   const { flowNodes, flowEdges } = useMemo(() => {
     const items = nodesPage?.content ?? [];
-    const radius = Math.max(220, items.length * 34);
+    const ids = items.map((n) => n.id);
+    const idSet = new Set(ids);
+    const indexOf = new Map(ids.map((id, i) => [id, i] as const));
 
-    const flowNodes: Node[] = items.map((node, index) => {
-      const angle = (2 * Math.PI * index) / Math.max(items.length, 1);
+    // Build the edge set that drives BOTH the layout and the render:
+    // explicit links + parent→child (the tree). The tree is where most of the
+    // structure lives, so drawing it is what makes the graph feel connected.
+    const layoutEdges: Array<[number, number]> = [];
+    const degree = new Map<string, number>();
+    const bump = (id: string) => degree.set(id, (degree.get(id) ?? 0) + 1);
+
+    const linkList = (links ?? []).filter((l) => idSet.has(l.sourceId) && idSet.has(l.targetId));
+    for (const l of linkList) {
+      layoutEdges.push([indexOf.get(l.sourceId)!, indexOf.get(l.targetId)!]);
+      bump(l.sourceId); bump(l.targetId);
+    }
+    for (const node of items) {
+      if (node.parentId && idSet.has(node.parentId)) {
+        layoutEdges.push([indexOf.get(node.parentId)!, indexOf.get(node.id)!]);
+        bump(node.parentId); bump(node.id);
+      }
+    }
+
+    const pos = forceLayout(ids, layoutEdges);
+
+    const flowNodes: Node[] = items.map((node) => {
+      const deg = degree.get(node.id) ?? 0;
+      const scale = 1 + Math.min(deg, 10) * 0.05; // hubs render bigger
+      const orphan = deg === 0;
       return {
         id: node.id,
-        position: { x: 400 + radius * Math.cos(angle), y: 320 + radius * Math.sin(angle) },
+        position: pos.get(node.id) ?? { x: 0, y: 0 },
         data: { label: node.title || t("common.untitled") },
         style: {
           borderRadius: 10,
-          border: `1px solid ${c.nodeBorder}`,
+          border: `1px solid ${node.hasChildren ? c.typed : c.nodeBorder}`,
           background: c.nodeBg,
           color: c.nodeText,
-          padding: "8px 14px",
-          fontSize: 13,
+          padding: `${8 * scale}px ${14 * scale}px`,
+          fontSize: 13 * scale,
           fontWeight: 500,
           boxShadow: "0 4px 12px rgba(0,0,0,0.18)",
+          opacity: orphan ? 0.4 : 1,
         },
       };
     });
 
-    const flowEdges: Edge[] = (links ?? []).map((link) => {
+    // parent→child: thin, subtle — the skeleton the tree hangs on
+    const parentEdges: Edge[] = items
+      .filter((node) => node.parentId && idSet.has(node.parentId))
+      .map((node) => ({
+        id: `pc-${node.id}`,
+        source: node.parentId!,
+        target: node.id,
+        type: "floating",
+        style: { stroke: c.parent, strokeWidth: 1 },
+        data: { labelColor: c.nodeText, labelBg: c.nodeBg, labelBorder: c.nodeBorder },
+      }));
+
+    // explicit links: dashed for plain, accented + arrow for typed relations
+    const linkEdges: Edge[] = linkList.map((link) => {
       const typed = !!link.relType;
       return {
         id: link.id,
@@ -68,7 +175,8 @@ export default function GraphPage() {
       };
     });
 
-    return { flowNodes, flowEdges };
+    // parent edges under the links so typed relations stay legible on top
+    return { flowNodes, flowEdges: [...parentEdges, ...linkEdges] };
   }, [nodesPage, links, t, c]);
 
   if (nodesPage && nodesPage.content.length === 0) {
@@ -86,7 +194,7 @@ export default function GraphPage() {
         <span className="text-sm font-semibold text-ink">{t("graph.title")}</span>
         {nodesPage && (
           <span className="text-xs text-dim">
-            {nodesPage.totalElements} · {(links ?? []).length} {t("graph.links")}
+            {nodesPage.totalElements} · {flowEdges.length} {t("graph.links")}
           </span>
         )}
       </div>
