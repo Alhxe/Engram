@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  LaunchAgent that keeps the Cloudflare Tunnel running for the logged-in user.
+  The backend containers persist via Docker's `restart: unless-stopped` policy
+  (they come back when Docker Desktop starts at login); this agent supplies the
+  equivalent for the natively-run tunnel.
+
+  Install:
+    cp deploy/com.engram.tunnel.plist ~/Library/LaunchAgents/com.engram.tunnel.plist
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.engram.tunnel.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.engram.tunnel</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/cloudflared</string>
+        <string>tunnel</string>
+        <string>--no-autoupdate</string>
+        <string>--config</string>
+        <string>/Users/alex/.cloudflared/config.yml</string>
+        <string>run</string>
+        <string>engram</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>ThrottleInterval</key>
+    <integer>15</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/alex/Library/Logs/engram-tunnel.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/alex/Library/Logs/engram-tunnel.err.log</string>
+</dict>
+</plist>

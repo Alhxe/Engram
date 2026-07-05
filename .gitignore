@@ -30,6 +30,7 @@ dist/
 .env
 .env.*
 !.env.example
+deploy/engram.env
 
 # --- Private / operational notes (never publish) ---
 *.local.md

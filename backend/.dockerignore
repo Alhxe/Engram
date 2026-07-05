@@ -1,0 +1,7 @@
+# Keep the build context small and reproducible: only pom.xml + src matter.
+target/
+data/
+*.db
+*.db-shm
+*.db-wal
+.DS_Store
