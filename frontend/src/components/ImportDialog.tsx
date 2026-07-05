@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { Check, FileText, Table, Undo2, Upload, X } from "lucide-react";
+import { Check, CornerDownRight, FileText, Sparkles, Table, Undo2, Upload, X } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import type { IngestionPlan, IngestionResult } from "@/lib/types";
 import { useI18n } from "@/i18n/I18nContext";
@@ -15,7 +15,20 @@ export default function ImportDialog({ onClose }: { onClose: () => void }) {
   const [text, setText] = useState("");
   const [plan, setPlan] = useState<IngestionPlan | null>(null);
   const [done, setDone] = useState<IngestionResult | null>(null);
+  // Destination in the tree: seeded with the AI's suggestion, overridable.
+  const [parent, setParent] = useState<{ id: string; title: string } | null>(null);
+  const [parentQuery, setParentQuery] = useState("");
   const isCsv = !!file && file.name.toLowerCase().endsWith(".csv");
+
+  // Light id+title list of every page — powers the destination picker.
+  const { data: allPages } = useQuery({ queryKey: ["global-graph"], queryFn: () => api.nodes.graph() });
+  const parentMatches = useMemo(() => {
+    const q = parentQuery.trim().toLowerCase();
+    if (!q) return [];
+    return (allPages ?? [])
+      .filter((p) => p.title.toLowerCase().includes(q))
+      .slice(0, 6);
+  }, [parentQuery, allPages]);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["nodes"] });
@@ -25,10 +38,17 @@ export default function ImportDialog({ onClose }: { onClose: () => void }) {
 
   const preview = useMutation({
     mutationFn: () => api.ai.ingestPreview(file, text),
-    onSuccess: (p) => setPlan(p),
+    onSuccess: (p) => {
+      setPlan(p);
+      setParent(
+        p.suggestedParentId && p.suggestedParentTitle
+          ? { id: p.suggestedParentId, title: p.suggestedParentTitle }
+          : null,
+      );
+    },
   });
   const commit = useMutation({
-    mutationFn: () => api.ai.ingestCommit({ parentId: null, plan: plan! }),
+    mutationFn: () => api.ai.ingestCommit({ parentId: parent?.id ?? null, plan: plan! }),
     onSuccess: (result) => {
       invalidate();
       setDone(result);
@@ -111,6 +131,59 @@ export default function ImportDialog({ onClose }: { onClose: () => void }) {
               <p className="mb-3 text-sm text-mid">
                 {plan.pages.length} {t("import.pagesWord")} · {t("import.reviewHint")}
               </p>
+
+              {/* Destination in the tree — AI-suggested, user-overridable */}
+              <div className="mb-3 rounded-xl border border-line bg-card p-3">
+                <div className="flex items-center gap-2 text-xs text-dim">
+                  <CornerDownRight className="h-3.5 w-3.5" strokeWidth={1.75} />
+                  {t("import.parentLabel")}
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {parent ? (
+                    <span className="flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent/10 px-2.5 py-1 text-[13px] text-ink">
+                      {plan.suggestedParentId === parent.id && (
+                        <Sparkles className="h-3.5 w-3.5 text-accent" strokeWidth={1.75} />
+                      )}
+                      {parent.title}
+                      <button
+                        onClick={() => setParent(null)}
+                        className="ml-0.5 text-dim transition hover:text-ink"
+                        title={t("import.parentRoot")}
+                      >
+                        <X className="h-3.5 w-3.5" strokeWidth={2} />
+                      </button>
+                    </span>
+                  ) : (
+                    <span className="rounded-lg border border-line2 bg-elev px-2.5 py-1 text-[13px] text-mid">
+                      {t("import.parentRoot")}
+                    </span>
+                  )}
+                  <div className="relative min-w-40 flex-1">
+                    <input
+                      value={parentQuery}
+                      onChange={(e) => setParentQuery(e.target.value)}
+                      placeholder={t("import.parentSearch")}
+                      className="w-full rounded-lg border border-line2 bg-card px-2.5 py-1 text-[13px] text-ink outline-none placeholder:text-dim focus:border-accent/60"
+                    />
+                    {parentMatches.length > 0 && (
+                      <div className="absolute left-0 top-8 z-10 w-full overflow-hidden rounded-lg border border-line2 bg-panel shadow-xl shadow-black/40">
+                        {parentMatches.map((p) => (
+                          <button
+                            key={p.id}
+                            onClick={() => {
+                              setParent({ id: p.id, title: p.title });
+                              setParentQuery("");
+                            }}
+                            className="block w-full truncate px-2.5 py-1.5 text-left text-[13px] text-mid transition hover:bg-card hover:text-ink"
+                          >
+                            {p.title}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
               {plan.pages.map((page, i) => {
                 const Icon = LAYOUT_ICON[page.layout];
                 return (
