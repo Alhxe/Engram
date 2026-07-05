@@ -1,0 +1,43 @@
+# --- Java / build ---
+target/
+build/
+.gradle/
+*.class
+*.jar
+*.war
+hs_err_pid*
+
+# --- Native image ---
+*.build_artifacts.txt
+
+# --- SQLite database files ---
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# --- Attachment blobs (stored on disk, not in git) ---
+backend/data/attachments/
+
+# --- Node / frontend ---
+node_modules/
+dist/
+.vite/
+*.local
+
+# --- Env / secrets ---
+.env
+.env.*
+!.env.example
+
+# --- Private / operational notes (never publish) ---
+*.local.md
+docs/private/
+
+# --- IDE / OS ---
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db

@@ -1,0 +1,173 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { api } from "./api";
+import type { CreateNodeRequest, UpdateNodeRequest } from "./types";
+
+export function useNodes(parentId?: string) {
+  return useQuery({
+    queryKey: ["nodes", { parentId: parentId ?? null }],
+    queryFn: () => api.nodes.list({ parentId }),
+  });
+}
+
+export function useNodeChildren(parentId?: string, enabled = true) {
+  return useQuery({
+    queryKey: ["children", parentId ?? "root"],
+    queryFn: () => api.nodes.children(parentId),
+    enabled,
+  });
+}
+
+export function useBreadcrumb(id: string | undefined) {
+  return useQuery({
+    queryKey: ["breadcrumb", id],
+    queryFn: () => api.nodes.breadcrumb(id as string),
+    enabled: !!id,
+  });
+}
+
+export function useUpsertProperty(nodeId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { name: string; type: import("./types").PropertyType; value: string | null }) =>
+      api.nodes.upsertProperty(nodeId, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["node", nodeId] });
+      qc.invalidateQueries({ queryKey: ["nodes"] });
+    },
+  });
+}
+
+export function useDeleteProperty(nodeId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => api.nodes.deleteProperty(nodeId, name),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["node", nodeId] });
+      qc.invalidateQueries({ queryKey: ["nodes"] });
+    },
+  });
+}
+
+export function useNode(id: string | undefined) {
+  return useQuery({
+    queryKey: ["node", id],
+    queryFn: () => api.nodes.get(id as string),
+    enabled: !!id,
+  });
+}
+
+export function useBacklinks(id: string | undefined) {
+  return useQuery({
+    queryKey: ["backlinks", id],
+    queryFn: () => api.nodes.backlinks(id as string),
+    enabled: !!id,
+  });
+}
+
+export function useTags() {
+  return useQuery({ queryKey: ["tags"], queryFn: () => api.tags.list() });
+}
+
+export function useFavorites() {
+  return useQuery({ queryKey: ["favorites"], queryFn: () => api.nodes.favorites() });
+}
+
+export function useSetFavorite(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (favorite: boolean) => api.nodes.setFavorite(id, favorite),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["favorites"] });
+      qc.invalidateQueries({ queryKey: ["node", id] });
+    },
+  });
+}
+
+export function useLinks() {
+  return useQuery({ queryKey: ["links"], queryFn: () => api.links.list() });
+}
+
+function invalidateTree(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ["nodes"] });
+  qc.invalidateQueries({ queryKey: ["children"] });
+  qc.invalidateQueries({ queryKey: ["tags"] });
+}
+
+export function useCreateNode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateNodeRequest) => api.nodes.create(body),
+    onSuccess: () => invalidateTree(qc),
+  });
+}
+
+export function useUpdateNode(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: UpdateNodeRequest) => api.nodes.update(id, body),
+    onSuccess: () => {
+      invalidateTree(qc);
+      qc.invalidateQueries({ queryKey: ["node", id] });
+      qc.invalidateQueries({ queryKey: ["breadcrumb", id] });
+    },
+  });
+}
+
+export function useDeleteNode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.nodes.remove(id),
+    onSuccess: () => invalidateTree(qc),
+  });
+}
+
+export function useMoveNode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, parentId }: { id: string; parentId: string | null }) =>
+      api.nodes.move(id, parentId),
+    onSuccess: () => invalidateTree(qc),
+  });
+}
+
+export function useDeleteLink() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.links.remove(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["links"] });
+      qc.invalidateQueries({ queryKey: ["backlinks"] });
+    },
+  });
+}
+
+export function useCreateLink() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { sourceId: string; targetId: string }) => api.links.create(body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["links"] });
+      qc.invalidateQueries({ queryKey: ["backlinks"] });
+    },
+  });
+}
+
+export function useReorderNodes(parentId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (orderedIds: string[]) => api.nodes.reorder(orderedIds),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["nodes", { parentId: parentId ?? null }] });
+      qc.invalidateQueries({ queryKey: ["nodes"] });
+    },
+  });
+}
+
+export function useUpdatePosition() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, x, y, color }: { id: string; x: number; y: number; color: string | null }) =>
+      api.nodes.updatePosition(id, { x, y, color }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["nodes"] }),
+  });
+}

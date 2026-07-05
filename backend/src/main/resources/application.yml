@@ -1,0 +1,47 @@
+spring:
+  application:
+    name: engram
+  datasource:
+    # SQLite: single file, foreign keys on, WAL mode, wait on locks.
+    url: jdbc:sqlite:${ENGRAM_DB_PATH:./data/engram.db}?foreign_keys=on&journal_mode=WAL&busy_timeout=5000
+    driver-class-name: org.sqlite.JDBC
+  jpa:
+    # Schema is owned by Liquibase. SQLite's dynamic typing makes Hibernate
+    # 'validate' unreliable, so DDL is left entirely to migrations.
+    hibernate:
+      ddl-auto: none
+    database-platform: org.hibernate.community.dialect.SQLiteDialect
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+  servlet:
+    multipart:
+      max-file-size: 25MB
+      max-request-size: 25MB
+
+server:
+  port: ${ENGRAM_PORT:8080}
+
+engram:
+  # Frontend runs on Cloudflare Pages (different origin) -> CORS needed.
+  cors:
+    allowed-origins: ${ENGRAM_CORS_ORIGINS:http://localhost:5173}
+  attachments:
+    dir: ${ENGRAM_ATTACHMENTS_DIR:./data/attachments}
+  backup:
+    # Scheduled full-vault backups to disk. Off by default; enable per-deployment.
+    enabled: ${ENGRAM_BACKUP_ENABLED:false}
+    cron: ${ENGRAM_BACKUP_CRON:0 0 3 * * *}
+    dir: ${ENGRAM_BACKUP_DIR:./data/backups}
+    keep: ${ENGRAM_BACKUP_KEEP:7}
+  jwt:
+    # Base64-encoded HMAC secret (>= 32 bytes). Override in production!
+    secret: ${ENGRAM_JWT_SECRET:3F8kQ2mVjZ0pT7yR1wN6xL4bH9cD5sA8eG2uI0oP3qW7rY1tK6vB4nM5zX8jC0dF2}
+    expiration-ms: ${ENGRAM_JWT_EXPIRATION_MS:86400000}
+  ai:
+    # Base64-encoded 32-byte AES key used to encrypt stored provider API keys.
+    # Override in production; rotating it makes previously stored keys unreadable.
+    encryption-key: ${ENGRAM_AI_ENCRYPTION_KEY:Zm9vYmFyMTIzNDU2Nzg5MGFiY2RlZmdoaWprbG1ub3A=}

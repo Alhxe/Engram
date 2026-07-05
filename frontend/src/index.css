@@ -1,0 +1,488 @@
+@import "tailwindcss";
+
+/* Design tokens — single source of truth for the whole UI */
+@theme {
+  --color-app: #0b0c0f;
+  --color-panel: #0f1114;
+  --color-card: #14161b;
+  --color-elev: #1b1e25;
+  --color-line: #23262e;
+  --color-line2: #323644;
+  --color-ink: #edeff3;
+  --color-mid: #a7adba;
+  --color-dim: #697080;
+  --color-accent: #6d7ef2;
+  --color-accent2: #93a0ff;
+}
+
+:root {
+  color-scheme: dark;
+  --accent: #6d7ef2;
+  --scroll-thumb: #2b2e38;
+  --color-text: #d4d8e0; /* body prose — a touch brighter than secondary text */
+}
+
+/* Light theme — overrides the design tokens; every utility reads these vars. */
+html[data-theme="light"] {
+  color-scheme: light;
+  --accent: #4f5fe0;
+  --scroll-thumb: #b9c1cf;
+  --color-app: #e8eaef;
+  --color-panel: #f4f6f9;
+  --color-card: #ffffff;
+  --color-elev: #e2e6ef;
+  --color-line: #d3d9e2;
+  --color-line2: #bfc7d5;
+  --color-ink: #14181f;
+  --color-mid: #434c5a;
+  --color-dim: #757e8d;
+  --color-text: #2a303b; /* darker body prose for comfortable reading on light */
+  --color-accent: #4f5fe0;
+  --color-accent2: #4453d4;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-app);
+  color: var(--color-ink);
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv11", "ss01";
+}
+
+/* Scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::selection {
+  background: rgba(109, 126, 242, 0.35);
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.fade-up {
+  animation: fade-up 0.18s ease-out both;
+}
+
+/* TipTap editor content */
+.tiptap {
+  outline: none;
+  color: var(--color-text);
+}
+.tiptap p {
+  margin: 0 0 0.75rem;
+}
+.tiptap h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--color-ink);
+  margin: 1.25rem 0 0.5rem;
+  scroll-margin-top: 5rem;
+}
+.tiptap h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--color-ink);
+  margin: 1.25rem 0 0.5rem;
+  scroll-margin-top: 5rem;
+}
+.tiptap h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-ink);
+  margin: 1rem 0 0.4rem;
+  scroll-margin-top: 5rem;
+}
+.tiptap ul {
+  list-style: disc;
+  padding-left: 1.5rem;
+  margin: 0 0 0.75rem;
+}
+.tiptap ol {
+  list-style: decimal;
+  padding-left: 1.5rem;
+  margin: 0 0 0.75rem;
+}
+.tiptap code {
+  background: var(--color-elev);
+  border-radius: 4px;
+  padding: 0.1rem 0.3rem;
+  font-size: 0.9em;
+}
+.tiptap pre {
+  background: #08090b;
+  color: #e4e6eb;
+  border: 1px solid #23262e;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+}
+.tiptap pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+.tiptap blockquote {
+  border-left: 3px solid var(--color-accent);
+  padding-left: 0.85rem;
+  color: var(--color-mid);
+  margin: 0 0 0.75rem;
+}
+.tiptap ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0.25rem;
+}
+.tiptap ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+.tiptap ul[data-type="taskList"] li > label {
+  margin-top: 0.15rem;
+}
+.tiptap ul[data-type="taskList"] input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+.tiptap table {
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 8px;
+}
+.tiptap table td,
+.tiptap table th {
+  border: 1px solid var(--color-line2);
+  padding: 0.4rem 0.6rem;
+  vertical-align: top;
+  min-width: 4rem;
+}
+.tiptap table th {
+  background: var(--color-elev);
+  font-weight: 600;
+  text-align: left;
+}
+.tiptap table .selectedCell {
+  background: rgba(109, 126, 242, 0.15);
+}
+.tiptap .tableWrapper {
+  overflow-x: auto;
+}
+.tiptap .is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--color-dim);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.editor-image-wrap {
+  margin: 0.6rem 0;
+}
+.image-frame {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+  border-radius: 10px;
+}
+.image-frame.is-selected {
+  outline: 2px solid #6d7ef2;
+  outline-offset: 2px;
+}
+.tiptap img.editor-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  border: 1px solid #23262e;
+}
+.image-handle {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 42px;
+  max-height: 60%;
+  transform: translateY(-50%);
+  border-radius: 6px;
+  background: #6d7ef2;
+  border: 2px solid #0b0c0f;
+  cursor: ew-resize;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.image-handle-l {
+  left: -6px;
+}
+.image-handle-r {
+  right: -6px;
+}
+.image-frame:hover .image-handle,
+.image-frame.is-selected .image-handle {
+  opacity: 1;
+}
+
+.tiptap hr {
+  border: none;
+  border-top: 1px solid var(--color-line2);
+  margin: 1.25rem 0;
+}
+.tiptap hr.ProseMirror-selectednode {
+  border-top-color: var(--color-accent);
+}
+
+/* search snippet highlight */
+mark {
+  background: rgba(109, 126, 242, 0.3);
+  color: var(--color-ink);
+  border-radius: 3px;
+  padding: 0 2px;
+}
+
+/* editor highlight (multicolor) — keeps dark, readable text */
+.tiptap mark {
+  color: #0b0c0f;
+  border-radius: 3px;
+  padding: 0.05rem 0.2rem;
+}
+
+/* code block syntax highlighting (lowlight / highlight.js tokens) */
+.tiptap pre .hljs-comment,
+.tiptap pre .hljs-quote {
+  color: #5f6675;
+  font-style: italic;
+}
+.tiptap pre .hljs-keyword,
+.tiptap pre .hljs-selector-tag,
+.tiptap pre .hljs-literal {
+  color: #c792ea;
+}
+.tiptap pre .hljs-string,
+.tiptap pre .hljs-attr,
+.tiptap pre .hljs-addition {
+  color: #c3e88d;
+}
+.tiptap pre .hljs-number,
+.tiptap pre .hljs-symbol {
+  color: #f78c6c;
+}
+.tiptap pre .hljs-title,
+.tiptap pre .hljs-function .hljs-title,
+.tiptap pre .hljs-section {
+  color: #82aaff;
+}
+.tiptap pre .hljs-built_in,
+.tiptap pre .hljs-type,
+.tiptap pre .hljs-class .hljs-title {
+  color: #ffcb6b;
+}
+.tiptap pre .hljs-tag,
+.tiptap pre .hljs-name,
+.tiptap pre .hljs-deletion {
+  color: #f07178;
+}
+
+/* Hover-reveal that animates height 0 → auto (no reserved space when hidden) */
+.page-head .reveal {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 0.2s ease, opacity 0.2s ease;
+}
+.page-head:hover .reveal,
+.page-head:focus-within .reveal {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.reveal-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* "Ask" answer formatting */
+.ask-answer strong {
+  font-weight: 700;
+  color: var(--color-ink);
+}
+.ask-answer code {
+  background: var(--color-elev);
+  border-radius: 4px;
+  padding: 0.05rem 0.3rem;
+  font-size: 0.9em;
+}
+.ask-cite {
+  margin: 0 0.15rem;
+  border-radius: 4px;
+  background: rgba(109, 126, 242, 0.2);
+  padding: 0 0.3rem;
+  font-size: 0.65em;
+  font-weight: 600;
+  color: var(--color-accent2);
+}
+
+/* Callout blocks */
+.tiptap .callout {
+  position: relative;
+  display: flex;
+  gap: 0.6rem;
+  margin: 0.85rem 0;
+  padding: 0.7rem 0.9rem 0.7rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--color-line2);
+  border-left-width: 3px;
+}
+.tiptap .callout > * {
+  margin: 0;
+}
+.tiptap .callout::before {
+  content: "💡";
+  flex-shrink: 0;
+  font-size: 1.05rem;
+  line-height: 1.5;
+}
+.tiptap .callout[data-variant="info"] {
+  border-left-color: #60a5fa;
+  background: rgba(96, 165, 250, 0.1);
+}
+.tiptap .callout[data-variant="info"]::before {
+  content: "💡";
+}
+.tiptap .callout[data-variant="success"] {
+  border-left-color: #34d399;
+  background: rgba(52, 211, 153, 0.1);
+}
+.tiptap .callout[data-variant="success"]::before {
+  content: "✅";
+}
+.tiptap .callout[data-variant="warn"] {
+  border-left-color: #fbbf24;
+  background: rgba(251, 191, 36, 0.12);
+}
+.tiptap .callout[data-variant="warn"]::before {
+  content: "⚠️";
+}
+.tiptap .callout[data-variant="danger"] {
+  border-left-color: #f87171;
+  background: rgba(248, 113, 113, 0.1);
+}
+.tiptap .callout[data-variant="danger"]::before {
+  content: "🛑";
+}
+.tiptap .callout[data-variant="note"] {
+  border-left-color: var(--color-accent);
+  background: rgba(109, 126, 242, 0.09);
+}
+.tiptap .callout[data-variant="note"]::before {
+  content: "📌";
+}
+.tiptap .callout .callout-body {
+  min-width: 0;
+  flex: 1;
+}
+
+/* Embedded page (transclusion) */
+.tiptap .page-embed {
+  margin: 0.9rem 0;
+  border: 1px solid var(--color-line2);
+  border-left: 3px solid var(--color-accent);
+  border-radius: 10px;
+  background: var(--color-card);
+  overflow: hidden;
+}
+.tiptap .page-embed.ProseMirror-selectednode {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+.page-embed-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.7rem;
+  border-bottom: 1px solid var(--color-line);
+  background: var(--color-panel);
+}
+.page-embed-body {
+  padding: 0.7rem 0.9rem;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.page-embed-body > *:last-child {
+  margin-bottom: 0;
+}
+.page-embed-picker .page-embed-results {
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+/* "@" page-link chip in the editor */
+.page-link {
+  color: #93a0ff;
+  font-weight: 500;
+  background: rgba(109, 126, 242, 0.14);
+  border: 1px solid rgba(109, 126, 242, 0.22);
+  border-radius: 5px;
+  padding: 0.05rem 0.35rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease;
+}
+.page-link::before {
+  content: "@";
+  opacity: 0.5;
+  margin-right: 0.05rem;
+}
+.page-link:hover {
+  background: rgba(109, 126, 242, 0.26);
+}
+
+/* React Flow theming */
+.react-flow__attribution {
+  display: none;
+}
+/* Connection handles are decorative here (nodes aren't editable) — hide the dots. */
+.react-flow__handle {
+  opacity: 0;
+}
+.react-flow__controls {
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+.react-flow__controls button {
+  background: var(--color-card);
+  border-bottom: 1px solid var(--color-line);
+  color: var(--color-mid);
+}
+.react-flow__controls button:hover {
+  background: var(--color-elev);
+  color: var(--color-ink);
+}
+.react-flow__controls button svg {
+  fill: currentColor;
+}

@@ -1,0 +1,17 @@
+{
+  "name": "Engram",
+  "short_name": "Engram",
+  "description": "Your personal knowledge base — notes, mind maps and everything connected.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0c0f",
+  "theme_color": "#0b0c0f",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ]
+}
