@@ -196,15 +196,16 @@ export default function Layout() {
           </div>
         )}
 
-        <AcademiaNav />
-
-        <div className="mt-5 px-4">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-dim">
-            {t("nav.pages")}
-          </span>
-        </div>
-        <div className="mt-1.5 flex-1 overflow-y-auto px-3 pb-2">
-          <PageTree />
+        <div className="mt-5 flex-1 overflow-y-auto pb-2">
+          <div className="px-4">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-dim">
+              {t("nav.pages")}
+            </span>
+          </div>
+          <div className="mt-1.5 px-3">
+            <PageTree />
+          </div>
+          <AcademiaNav />
         </div>
 
         <div className="flex items-center gap-2.5 border-t border-line px-3 py-2.5">
