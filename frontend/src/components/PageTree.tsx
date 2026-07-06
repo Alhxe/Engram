@@ -23,6 +23,10 @@ import { LAYOUT_ICON, LAYOUT_TEXT } from "./ui";
 // its own open flag in isolation.
 const TreeContext = createContext<{ openIds: Set<string>; toggle: (id: string) => void } | null>(null);
 
+// The Academia study area has its own sidebar section, so its root page (and the
+// subjects nested under it) are hidden from the general Pages tree.
+const isAcademiaRoot = (item: NodeTreeItem) => item.title?.trim().toLowerCase() === "academia";
+
 function TreeIcon({ item }: { item: NodeTreeItem }) {
   // Older backend payloads may not carry the layout yet — fall back to a document.
   const layout = item.layout ?? "DOCUMENT";
@@ -180,7 +184,9 @@ export default function PageTree() {
     >
       <TreeContext.Provider value={treeCtx}>
         <div className="space-y-px">
-          {roots?.map((item) => <TreeNode key={item.id} item={item} depth={0} />)}
+          {roots
+            ?.filter((item) => !isAcademiaRoot(item))
+            .map((item) => <TreeNode key={item.id} item={item} depth={0} />)}
           {activeItem && <RootDropZone />}
         </div>
       </TreeContext.Provider>
