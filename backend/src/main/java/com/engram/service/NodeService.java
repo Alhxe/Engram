@@ -17,6 +17,8 @@ import com.engram.web.dto.NodeTreeItem;
 import com.engram.web.dto.PropertyDto;
 import com.engram.web.dto.UpdateNodeRequest;
 import com.engram.web.error.NotFoundException;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -341,6 +343,7 @@ public class NodeService {
         if (day.isBlank()) {
             throw new IllegalArgumentException("A date is required");
         }
+        cleanupEmptyJournalEntries(); // opening the journal tidies past empty days
         Node journal = nodeRepository.findByTitleIgnoreCaseAndDeletedAtIsNull("Journal").stream()
                 .filter(n -> n.getParent() == null)
                 .findFirst()
@@ -360,6 +363,47 @@ public class NodeService {
                     return nodeRepository.saveAndFlush(created);
                 });
         return toResponse(daily);
+    }
+
+    /** Trash past journal entries that were opened but never written to (blank
+     *  content, no sub-pages), so empty days don't pile up. Today's entry is
+     *  always kept. Soft delete — restorable from the trash. Returns the count. */
+    @Transactional
+    public int cleanupEmptyJournalEntries() {
+        Node journal = nodeRepository.findByTitleIgnoreCaseAndDeletedAtIsNull("Journal").stream()
+                .filter(n -> n.getParent() == null)
+                .findFirst()
+                .orElse(null);
+        if (journal == null) {
+            return 0;
+        }
+        String today = LocalDate.now().toString();
+        Instant now = Instant.now();
+        List<Node> trashed = new ArrayList<>();
+        for (Node entry : nodeRepository.findByParentIdAndDeletedAtIsNullOrderByTitleAsc(journal.getId())) {
+            String title = entry.getTitle();
+            // only dated entries (yyyy-MM-dd), and never today's
+            if (title == null || !title.matches("\\d{4}-\\d{2}-\\d{2}") || today.equals(title)) {
+                continue;
+            }
+            boolean blank = isEffectivelyEmpty(entry.getContent());
+            boolean noChildren =
+                    nodeRepository.findByParentIdAndDeletedAtIsNullOrderByTitleAsc(entry.getId()).isEmpty();
+            if (blank && noChildren) {
+                entry.setDeletedAt(now);
+                trashed.add(entry);
+            }
+        }
+        nodeRepository.saveAll(trashed);
+        return trashed.size();
+    }
+
+    /** True when HTML content carries no visible text (null, "", "<p></p>", &nbsp; …). */
+    private static boolean isEffectivelyEmpty(String html) {
+        if (html == null) {
+            return true;
+        }
+        return html.replaceAll("<[^>]*>", "").replace("&nbsp;", " ").trim().isEmpty();
     }
 
     /** Merge {@code sourceId} INTO {@code targetId}: fold its tags, missing

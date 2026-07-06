@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ChevronRight, CornerLeftUp } from "lucide-react";
 import {
@@ -13,10 +13,15 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { useMoveNode, useNodeChildren } from "@/lib/queries";
+import { useBreadcrumb, useMoveNode, useNodeChildren } from "@/lib/queries";
 import type { NodeTreeItem } from "@/lib/types";
 import { useI18n } from "@/i18n/I18nContext";
 import { LAYOUT_ICON, LAYOUT_TEXT } from "./ui";
+
+// Shared expand state so the tree can auto-open the ancestor chain of the
+// active page (deep links / link navigation) instead of each node tracking
+// its own open flag in isolation.
+const TreeContext = createContext<{ openIds: Set<string>; toggle: (id: string) => void } | null>(null);
 
 function TreeIcon({ item }: { item: NodeTreeItem }) {
   // Older backend payloads may not carry the layout yet — fall back to a document.
@@ -34,7 +39,8 @@ function TreeNode({ item, depth }: { item: NodeTreeItem; depth: number }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useI18n();
-  const [open, setOpen] = useState(false);
+  const ctx = useContext(TreeContext)!;
+  const open = ctx.openIds.has(item.id);
   const { data: children } = useNodeChildren(item.id, open);
 
   const draggable = useDraggable({ id: item.id, data: { item } });
@@ -71,7 +77,7 @@ function TreeNode({ item, depth }: { item: NodeTreeItem; depth: number }) {
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
-                setOpen((v) => !v);
+                ctx.toggle(item.id);
               }}
               className="flex h-4 w-4 items-center justify-center rounded text-dim hover:bg-line2 hover:text-ink"
             >
@@ -111,7 +117,44 @@ function RootDropZone() {
 export default function PageTree() {
   const { data: roots } = useNodeChildren(undefined, true);
   const move = useMoveNode();
+  const location = useLocation();
   const [activeItem, setActiveItem] = useState<NodeTreeItem | null>(null);
+  const [openIds, setOpenIds] = useState<Set<string>>(() => new Set());
+
+  const activeId = location.pathname.startsWith("/nodes/")
+    ? location.pathname.slice("/nodes/".length)
+    : undefined;
+  const { data: breadcrumb } = useBreadcrumb(activeId);
+
+  const toggle = useCallback((id: string) => {
+    setOpenIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  // Open every ancestor of the active page (breadcrumb minus the page itself)
+  // so a direct URL or an in-page link reveals and highlights it in the tree.
+  useEffect(() => {
+    if (!breadcrumb) return;
+    const ancestors = breadcrumb.map((b) => b.id).filter((id) => id !== activeId);
+    if (ancestors.length === 0) return;
+    setOpenIds((prev) => {
+      let changed = false;
+      const next = new Set(prev);
+      for (const id of ancestors) {
+        if (!next.has(id)) {
+          next.add(id);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [breadcrumb, activeId]);
+
+  const treeCtx = useMemo(() => ({ openIds, toggle }), [openIds, toggle]);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -135,10 +178,12 @@ export default function PageTree() {
       onDragEnd={onDragEnd}
       onDragCancel={() => setActiveItem(null)}
     >
-      <div className="space-y-px">
-        {roots?.map((item) => <TreeNode key={item.id} item={item} depth={0} />)}
-        {activeItem && <RootDropZone />}
-      </div>
+      <TreeContext.Provider value={treeCtx}>
+        <div className="space-y-px">
+          {roots?.map((item) => <TreeNode key={item.id} item={item} depth={0} />)}
+          {activeItem && <RootDropZone />}
+        </div>
+      </TreeContext.Provider>
       <DragOverlay dropAnimation={null}>
         {activeItem ? (
           <div className="flex items-center gap-1.5 rounded-lg bg-elev px-2.5 py-1 text-[13px] text-ink shadow-xl ring-1 ring-accent/40">

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ChevronRight, GitBranch, History, Link2, Maximize2, Minimize2, Network, Paperclip, Plus, Star } from "lucide-react";
 import {
@@ -35,6 +35,8 @@ import { LAYOUT_ICON } from "@/components/ui";
 
 // React Flow lives here — only load it when the Connections panel is opened.
 const LocalGraph = lazy(() => import("@/components/LocalGraph"));
+
+const stripHtml = (html: string) => html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
 
 const LAYOUTS: PageLayout[] = ["DOCUMENT", "MINDMAP", "TABLE", "BOARD", "CALENDAR", "CHART"];
 const LAYOUT_MODE: Record<Exclude<PageLayout, "DOCUMENT">, ViewMode> = {
@@ -101,6 +103,29 @@ export default function NodePage() {
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dirty, title, content, tags, layout]);
+
+  // Auto-trash an untouched journal entry when you leave it, so empty days
+  // don't pile up. A journal entry is a child of the "Journal" page; "empty"
+  // means no text and no sub-pages. Soft delete — recoverable from Trash.
+  const isEmptyJournal =
+    (crumbs ?? []).some((c) => c.id !== id && c.title.trim().toLowerCase() === "journal") &&
+    stripHtml(content).length === 0 &&
+    !(node?.hasChildren ?? false) &&
+    (childrenPage?.content.length ?? 0) === 0;
+
+  const emptyJournalRef = useRef(false);
+  useEffect(() => {
+    emptyJournalRef.current = isEmptyJournal;
+  }, [isEmptyJournal]);
+
+  const deleteRef = useRef(deleteNode);
+  deleteRef.current = deleteNode;
+  useEffect(() => {
+    const leavingId = id;
+    return () => {
+      if (emptyJournalRef.current && leavingId) deleteRef.current.mutate(leavingId);
+    };
+  }, [id]);
 
   if (isLoading || !node) {
     return <p className="p-8 text-sm text-dim">{t("common.loading")}</p>;
