@@ -118,8 +118,7 @@ function RootDropZone() {
   );
 }
 
-export default function PageTree() {
-  const { data: roots } = useNodeChildren(undefined, true);
+export function Tree({ roots }: { roots: NodeTreeItem[] }) {
   const move = useMoveNode();
   const location = useLocation();
   const [activeItem, setActiveItem] = useState<NodeTreeItem | null>(null);
@@ -184,9 +183,7 @@ export default function PageTree() {
     >
       <TreeContext.Provider value={treeCtx}>
         <div className="space-y-px">
-          {roots
-            ?.filter((item) => !isAcademiaRoot(item))
-            .map((item) => <TreeNode key={item.id} item={item} depth={0} />)}
+          {roots.map((item) => <TreeNode key={item.id} item={item} depth={0} />)}
           {activeItem && <RootDropZone />}
         </div>
       </TreeContext.Provider>
@@ -200,4 +197,10 @@ export default function PageTree() {
       </DragOverlay>
     </DndContext>
   );
+}
+
+export default function PageTree() {
+  const { data: roots } = useNodeChildren(undefined, true);
+  // The Academia root lives in its own sidebar section, not the Pages tree.
+  return <Tree roots={(roots ?? []).filter((item) => !isAcademiaRoot(item))} />;
 }

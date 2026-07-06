@@ -1,10 +1,13 @@
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { GraduationCap, Plus } from "lucide-react";
 import { useCreateSubject, useSubjects } from "@/lib/queries";
 import { useI18n } from "@/i18n/I18nContext";
+import { Tree } from "./PageTree";
+import type { NodeTreeItem } from "@/lib/types";
 
-/** Sidebar "Academia" section: the study area — one entry per subject, plus a
- *  button that scaffolds a new subject (Temario/Apuntes/Flashcards/Preguntas). */
+/** Sidebar "Academia" section: the study area. Subjects render with the same
+ *  expandable tree as Pages (so you can drill into Temario/Apuntes/…), plus a
+ *  button that scaffolds a new subject. */
 export default function AcademiaNav() {
   const { t } = useI18n();
   const navigate = useNavigate();
@@ -14,7 +17,13 @@ export default function AcademiaNav() {
   const add = () =>
     create.mutate(t("academia.newSubject"), { onSuccess: (s) => navigate(`/nodes/${s.id}`) });
 
-  const list = subjects ?? [];
+  const items: NodeTreeItem[] = (subjects ?? []).map((s) => ({
+    id: s.id,
+    title: s.title,
+    kind: s.kind,
+    layout: s.layout,
+    hasChildren: s.hasChildren,
+  }));
 
   return (
     <div className="mt-5 px-3">
@@ -31,19 +40,11 @@ export default function AcademiaNav() {
           <Plus className="h-3.5 w-3.5" strokeWidth={2} />
         </button>
       </div>
-      <div className="space-y-px">
-        {list.map((s) => (
-          <Link
-            key={s.id}
-            to={`/nodes/${s.id}`}
-            className="flex items-center gap-2 rounded-lg px-2 py-1 text-[13px] text-mid transition hover:bg-elev/60 hover:text-ink"
-          >
-            <GraduationCap className="h-3.5 w-3.5 shrink-0 text-dim" strokeWidth={1.75} />
-            <span className="truncate">{s.title || t("common.untitled")}</span>
-          </Link>
-        ))}
-        {list.length === 0 && <p className="px-2 py-1 text-xs text-dim">{t("academia.empty")}</p>}
-      </div>
+      {items.length === 0 ? (
+        <p className="px-2 py-1 text-xs text-dim">{t("academia.empty")}</p>
+      ) : (
+        <Tree roots={items} />
+      )}
     </div>
   );
 }
