@@ -192,6 +192,18 @@ export function useDashboard() {
   return useQuery({ queryKey: ["dashboard"], queryFn: () => api.dashboard() });
 }
 
+export function useInbox() {
+  return useQuery({ queryKey: ["inbox"], queryFn: () => api.inbox() });
+}
+
+export function useTasks() {
+  return useQuery({ queryKey: ["tasks"], queryFn: () => api.tasks() });
+}
+
+export function useSnippets() {
+  return useQuery({ queryKey: ["snippets"], queryFn: () => api.snippets() });
+}
+
 export function useCreateSubject() {
   const qc = useQueryClient();
   return useMutation({

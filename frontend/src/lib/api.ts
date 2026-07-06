@@ -291,6 +291,9 @@ export const api = {
       request<NodeResponse>(`/srs/${id}/grade?grade=${grade}`, { method: "POST" }),
   },
   dashboard: () => request<import("./types").DashboardResponse>("/dashboard"),
+  inbox: () => request<import("./types").PageRef[]>("/inbox"),
+  snippets: () => request<NodeResponse[]>("/snippets"),
+  tasks: () => request<import("./types").TaskItem[]>("/tasks"),
   academia: {
     subjects: () => request<NodeResponse[]>("/academia/subjects"),
     createSubject: (name: string) =>

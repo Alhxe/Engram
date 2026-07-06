@@ -118,6 +118,13 @@ export interface DashboardResponse {
   resurface: PageRef | null;
 }
 
+export interface TaskItem {
+  pageId: string;
+  pageTitle: string;
+  text: string;
+  done: boolean;
+}
+
 export interface CreateNodeRequest {
   title: string;
   content?: string | null;

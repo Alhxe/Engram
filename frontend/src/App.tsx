@@ -3,6 +3,9 @@ import { Route, Routes } from "react-router-dom";
 import AuthGate from "./components/AuthGate";
 import Layout from "./components/Layout";
 import HomePage from "./pages/HomePage";
+import InboxPage from "./pages/InboxPage";
+import TasksPage from "./pages/TasksPage";
+import SnippetsPage from "./pages/SnippetsPage";
 import NodePage from "./pages/NodePage";
 import SearchPage from "./pages/SearchPage";
 import AskPage from "./pages/AskPage";
@@ -28,6 +31,9 @@ function AppRoutes() {
             <Route path="ask" element={<AskPage />} />
             <Route path="review" element={<ReviewPage />} />
             <Route path="timeline" element={<TimelinePage />} />
+            <Route path="inbox" element={<InboxPage />} />
+            <Route path="tasks" element={<TasksPage />} />
+            <Route path="snippets" element={<SnippetsPage />} />
             <Route path="trash" element={<TrashPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>

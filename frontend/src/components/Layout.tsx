@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
-import { CalendarClock, CalendarDays, GitBranch, GraduationCap, HelpCircle, Home, LogOut, Menu, Moon, Network, Plus, Search, Settings, Sparkles, Star, Sun, Trash2, X } from "lucide-react";
+import { CalendarClock, CalendarDays, Code2, GitBranch, GraduationCap, HelpCircle, Home, Inbox, ListChecks, LogOut, Menu, Moon, Network, Plus, Search, Settings, Sparkles, Star, Sun, Trash2, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useCreateNode, useFavorites } from "@/lib/queries";
 import { clearSession, getUsername } from "@/lib/auth";
@@ -172,6 +172,9 @@ export default function Layout() {
           <NavItem to="/review" icon={GraduationCap} label={t("nav.review")} />
           <NavItem to="/timeline" icon={CalendarClock} label={t("nav.timeline")} />
           <NavItem to="/graph" icon={Network} label={t("nav.graph")} />
+          <NavItem to="/inbox" icon={Inbox} label={t("nav.inbox")} />
+          <NavItem to="/tasks" icon={ListChecks} label={t("nav.tasks")} />
+          <NavItem to="/snippets" icon={Code2} label={t("nav.snippets")} />
           <NavItem to="/trash" icon={Trash2} label={t("nav.trash")} />
           <NavItem to="/settings" icon={Settings} label={t("nav.settings")} />
         </nav>
