@@ -22,8 +22,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -45,6 +47,7 @@ public class IngestionService {
     private final AiService aiService;
     private final NodeService nodeService;
     private final LinkService linkService;
+    private final PageLinkResolver pageLinkResolver;
     private final NodeRepository nodeRepository;
     private final TagRepository tagRepository;
     private final ObjectMapper mapper;
@@ -52,12 +55,14 @@ public class IngestionService {
     public IngestionService(AiService aiService,
                             NodeService nodeService,
                             LinkService linkService,
+                            PageLinkResolver pageLinkResolver,
                             NodeRepository nodeRepository,
                             TagRepository tagRepository,
                             ObjectMapper mapper) {
         this.aiService = aiService;
         this.nodeService = nodeService;
         this.linkService = linkService;
+        this.pageLinkResolver = pageLinkResolver;
         this.nodeRepository = nodeRepository;
         this.tagRepository = tagRepository;
         this.mapper = mapper;
@@ -100,13 +105,21 @@ public class IngestionService {
                   <blockquote><pre><code><hr> and <table><thead><tbody><tr><th><td>. You may also use
                   callout boxes for tips/warnings: <div class="callout" data-variant="info"><p>...</p></div>
                   (variant is one of info, success, warn, danger, note). No inline styles, scripts, or images.
+                - Inside the html, whenever the prose mentions another page — one in this plan OR one of the
+                  existing page titles listed below — wrap that mention in a link:
+                  <a data-mention="Exact Page Title">the words as they appear</a>. Use the page's exact title
+                  in data-mention. Only link genuine references to real pages; never invent titles. This turns
+                  the mention into a live cross-link, like a wiki.
                 - Suggest a few "tags", reusing an existing tag when it fits.
                 - Optionally add "properties". Property type is one of TEXT, NUMBER, DATE (YYYY-MM-DD),
                   SELECT, CHECKBOX ("true"/"false"), URL, EMAIL, MULTISELECT (comma-separated), RATING (1-5).
                   Choose the specific type when it fits (URL for links, EMAIL for emails, DATE for dates).
                 - In "linkTitles", list the titles of other pages (in this plan or existing) this page relates to.
+                Also set "suggestedParentTitle" to the ONE existing page title (from the list below) that this
+                whole set of pages most naturally belongs under, or null if none clearly fits. Never use a title
+                from this plan or invent one — it must be an existing page.
                 Respond with ONLY this JSON, no prose:
-                {"pages":[{"title":"","layout":"DOCUMENT","html":"","tags":[""],"properties":[{"name":"","type":"TEXT","value":null}],"linkTitles":[""]}]}
+                {"suggestedParentTitle":null,"pages":[{"title":"","layout":"DOCUMENT","html":"","tags":[""],"properties":[{"name":"","type":"TEXT","value":null}],"linkTitles":[""]}]}
                 """;
 
         String prompt = "Existing tags: " + existingTags + "\n"
@@ -147,22 +160,43 @@ public class IngestionService {
             }
         }
 
+        // Second pass: now that every page exists, turn the AI's inline <a data-mention>
+        // references into real mention chips and collect the pages each one links to.
+        // Doing this after creation lets a page link forward to one created later.
         int links = 0;
         for (PlannedPage page : plan.pages()) {
             UUID sourceId = createdByTitle.get(
                     (page.title() == null ? "untitled" : page.title().trim().toLowerCase()));
-            if (sourceId == null || page.linkTitles() == null) {
+            if (sourceId == null) {
                 continue;
             }
-            for (String linkTitle : page.linkTitles()) {
-                UUID targetId = resolveTitle(linkTitle, createdByTitle);
-                if (targetId != null && !targetId.equals(sourceId)) {
-                    try {
-                        linkService.create(new CreateLinkRequest(sourceId, targetId, null));
-                        links++;
-                    } catch (RuntimeException ignored) {
-                        // Best-effort linking; skip anything that can't be linked.
+            PageLinkResolver.Resolved resolved =
+                    pageLinkResolver.resolve(page.html() == null ? "" : page.html(), createdByTitle);
+            if (!resolved.html().equals(page.html() == null ? "" : page.html())) {
+                nodeRepository.findById(sourceId).ifPresent(n -> {
+                    n.setContent(resolved.html());
+                    nodeRepository.saveAndFlush(n);
+                });
+            }
+
+            Set<UUID> targets = new LinkedHashSet<>(resolved.targetIds());
+            if (page.linkTitles() != null) {
+                for (String linkTitle : page.linkTitles()) {
+                    UUID targetId = resolveTitle(linkTitle, createdByTitle);
+                    if (targetId != null) {
+                        targets.add(targetId);
                     }
+                }
+            }
+            for (UUID targetId : targets) {
+                if (targetId.equals(sourceId)) {
+                    continue;
+                }
+                try {
+                    linkService.create(new CreateLinkRequest(sourceId, targetId, null));
+                    links++;
+                } catch (RuntimeException ignored) {
+                    // Best-effort linking; skip anything that can't be linked.
                 }
             }
         }
@@ -203,7 +237,16 @@ public class IngestionService {
             if (pages.isEmpty()) {
                 throw new AiException("The AI did not propose any pages");
             }
-            return new IngestionPlan(pages);
+            JsonNode parentNode = root.path("suggestedParentTitle");
+            String parentTitle = parentNode.isNull() ? null : parentNode.asText("").trim();
+            if (parentTitle != null && parentTitle.isEmpty()) {
+                parentTitle = null;
+            }
+            // Resolve the suggestion to a real page; an unresolvable title is no suggestion.
+            UUID parentId = parentTitle == null ? null
+                    : nodeRepository.findByTitleIgnoreCaseAndDeletedAtIsNull(parentTitle).stream()
+                            .findFirst().map(Node::getId).orElse(null);
+            return new IngestionPlan(pages, parentId == null ? null : parentTitle, parentId);
         } catch (AiException e) {
             throw e;
         } catch (Exception e) {

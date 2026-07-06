@@ -4,6 +4,7 @@ import com.engram.service.NodeService;
 import com.engram.web.dto.BacklinkResponse;
 import com.engram.web.dto.BreadcrumbItem;
 import com.engram.web.dto.CreateNodeRequest;
+import com.engram.web.dto.GlobalGraphItem;
 import com.engram.web.dto.MoveNodeRequest;
 import com.engram.web.dto.NodeResponse;
 import com.engram.web.dto.NodeTreeItem;
@@ -251,6 +252,11 @@ public class NodeController {
     @PostMapping("/{id}/history/{revisionId}/restore")
     public NodeResponse restoreRevision(@PathVariable UUID id, @PathVariable UUID revisionId) {
         return nodeService.restoreRevision(id, revisionId);
+    }
+
+    @GetMapping("/graph")
+    public List<GlobalGraphItem> globalGraph() {
+        return nodeService.globalGraph();
     }
 
     @GetMapping("/{id}/graph")
