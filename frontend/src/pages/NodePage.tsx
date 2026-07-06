@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ChevronRight, GitBranch, History, Link2, Maximize2, Minimize2, Network, Paperclip, Plus, Sparkles, Star } from "lucide-react";
+import { ChevronRight, GitBranch, GraduationCap, History, Link2, Maximize2, Minimize2, Network, Paperclip, Plus, Sparkles, Star } from "lucide-react";
 import {
   useBacklinks,
   useBreadcrumb,
@@ -26,6 +26,7 @@ import SchemaEditor from "@/components/SchemaEditor";
 import BulkFill from "@/components/BulkFill";
 import TableOfContents from "@/components/TableOfContents";
 import PathProgress from "@/components/PathProgress";
+import FlashcardGenerator from "@/components/FlashcardGenerator";
 import Backlinks from "@/components/Backlinks";
 import LinkSuggestions from "@/components/LinkSuggestions";
 import PropertyBacklinks from "@/components/PropertyBacklinks";
@@ -285,13 +286,23 @@ export default function NodePage() {
                 <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-dim">
                   {t("page.subPages")}
                 </h2>
-                <button
-                  onClick={addSubPage}
-                  disabled={createNode.isPending}
-                  className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-dim transition hover:bg-card hover:text-mid disabled:opacity-50"
-                >
-                  <Plus className="h-3.5 w-3.5" strokeWidth={2} /> {t("page.newSubPage")}
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => navigate(`/review?scope=${node.id}`)}
+                    className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-dim transition hover:bg-card hover:text-accent2"
+                    title={t("review.scopeHint")}
+                  >
+                    <GraduationCap className="h-3.5 w-3.5" strokeWidth={2} /> {t("nav.review")}
+                  </button>
+                  <FlashcardGenerator pageId={node.id} />
+                  <button
+                    onClick={addSubPage}
+                    disabled={createNode.isPending}
+                    className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-dim transition hover:bg-card hover:text-mid disabled:opacity-50"
+                  >
+                    <Plus className="h-3.5 w-3.5" strokeWidth={2} /> {t("page.newSubPage")}
+                  </button>
+                </div>
               </div>
               <div className="mb-2 flex items-start justify-between gap-2">
                 <SchemaEditor nodeId={node.id} schema={node.schema} />

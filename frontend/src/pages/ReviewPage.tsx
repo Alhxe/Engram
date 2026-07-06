@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Check, Eye, GraduationCap, RotateCcw } from "lucide-react";
-import { useSrsDue, useSrsGrade } from "@/lib/queries";
+import { useNode, useSrsDue, useSrsGrade } from "@/lib/queries";
 import { useI18n } from "@/i18n/I18nContext";
 import { EmptyState } from "@/components/ui";
 
@@ -17,7 +17,10 @@ const GRADES: { grade: Grade; key: string; cls: string }[] = [
 export default function ReviewPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const { data: due, isLoading, refetch } = useSrsDue();
+  const [params] = useSearchParams();
+  const scope = params.get("scope") ?? undefined;
+  const { data: due, isLoading, refetch } = useSrsDue(scope);
+  const { data: scopeNode } = useNode(scope);
   const grade = useSrsGrade();
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
@@ -74,6 +77,7 @@ export default function ReviewPage() {
       <div className="mb-4 flex items-center gap-2.5 text-sm">
         <GraduationCap className="h-4 w-4 text-accent2" strokeWidth={1.75} />
         <span className="font-semibold text-ink">{t("review.title")}</span>
+        {scopeNode && <span className="text-xs text-accent2">· {scopeNode.title}</span>}
         <span className="text-xs text-dim">
           {remaining} {t("review.count")}
         </span>

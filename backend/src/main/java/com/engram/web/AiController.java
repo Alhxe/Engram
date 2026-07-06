@@ -7,6 +7,7 @@ import com.engram.security.SecurityUtils;
 import com.engram.service.AiService;
 import com.engram.service.AiSuggestionService;
 import com.engram.service.AiFillService;
+import com.engram.service.AiFlashcardService;
 import com.engram.service.AskService;
 import com.engram.service.EditService;
 import com.engram.service.IngestionService;
@@ -50,6 +51,7 @@ public class AiController {
     private final IngestionService ingestionService;
     private final AskService askService;
     private final AiFillService fillService;
+    private final AiFlashcardService flashcardService;
     private final com.engram.service.LinkSuggestionService linkSuggestionService;
     private final com.engram.service.DuplicateService duplicateService;
     private final NodeService nodeService;
@@ -62,6 +64,7 @@ public class AiController {
                         IngestionService ingestionService,
                         AskService askService,
                         AiFillService fillService,
+                        AiFlashcardService flashcardService,
                         com.engram.service.LinkSuggestionService linkSuggestionService,
                         com.engram.service.DuplicateService duplicateService,
                         NodeService nodeService,
@@ -73,6 +76,7 @@ public class AiController {
         this.ingestionService = ingestionService;
         this.askService = askService;
         this.fillService = fillService;
+        this.flashcardService = flashcardService;
         this.linkSuggestionService = linkSuggestionService;
         this.duplicateService = duplicateService;
         this.nodeService = nodeService;
@@ -106,6 +110,12 @@ public class AiController {
         return fillService.fill(
                 SecurityUtils.requireUserId(), request.parentId(),
                 request.name(), request.type(), request.instruction());
+    }
+
+    @PostMapping("/flashcards/{pageId}")
+    public List<com.engram.web.dto.NodeResponse> flashcards(
+            @PathVariable UUID pageId, @RequestParam(defaultValue = "6") int count) {
+        return flashcardService.generate(SecurityUtils.requireUserId(), pageId, count);
     }
 
     @PostMapping("/edit/{nodeId}")

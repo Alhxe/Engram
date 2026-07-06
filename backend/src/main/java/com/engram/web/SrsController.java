@@ -23,10 +23,11 @@ public class SrsController {
         this.srsService = srsService;
     }
 
-    /** Cards due for review today (plus never-reviewed cards). */
+    /** Cards due for review today (plus never-reviewed cards). Optionally
+     *  scope to a page's subtree (a subject or a topic). */
     @GetMapping("/due")
-    public List<NodeResponse> due() {
-        return srsService.due();
+    public List<NodeResponse> due(@RequestParam(required = false) UUID scope) {
+        return srsService.due(scope);
     }
 
     /** Grade a card (AGAIN | HARD | GOOD | EASY) and reschedule it. */

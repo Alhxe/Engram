@@ -393,12 +393,23 @@ mark {
 .tiptap .callout[data-variant="danger"]::before {
   content: "🛑";
 }
+/* "note" is used for low-emphasis footnotes (e.g. source citations): a quiet,
+   compact line separated by a thin rule — no box, no fill, muted and small. */
 .tiptap .callout[data-variant="note"] {
-  border-left-color: var(--color-accent);
-  background: rgba(109, 126, 242, 0.09);
+  border: none;
+  border-top: 1px solid var(--color-line2);
+  border-radius: 0;
+  background: none;
+  gap: 0.4rem;
+  margin: 1.1rem 0 0;
+  padding: 0.5rem 0 0;
+  font-size: 0.82em;
+  color: var(--color-dim);
 }
 .tiptap .callout[data-variant="note"]::before {
   content: "📌";
+  font-size: 0.8rem;
+  opacity: 0.65;
 }
 .tiptap .callout .callout-body {
   min-width: 0;

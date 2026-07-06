@@ -176,8 +176,24 @@ export function useUpdatePosition() {
   });
 }
 
-export function useSrsDue() {
-  return useQuery({ queryKey: ["srs", "due"], queryFn: () => api.srs.due() });
+export function useSrsDue(scope?: string) {
+  return useQuery({ queryKey: ["srs", "due", scope ?? null], queryFn: () => api.srs.due(scope) });
+}
+
+export function useSubjects() {
+  return useQuery({ queryKey: ["academia", "subjects"], queryFn: () => api.academia.subjects() });
+}
+
+export function useCreateSubject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => api.academia.createSubject(name),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["academia", "subjects"] });
+      qc.invalidateQueries({ queryKey: ["children"] });
+      qc.invalidateQueries({ queryKey: ["nodes"] });
+    },
+  });
 }
 
 export function useSrsGrade() {
@@ -188,6 +204,19 @@ export function useSrsGrade() {
     // Invalidate the card itself; the review queue is managed locally so the
     // session isn't disrupted mid-review.
     onSuccess: (_res, { id }) => qc.invalidateQueries({ queryKey: ["node", id] }),
+  });
+}
+
+export function useGenerateFlashcards() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ pageId, count = 6 }: { pageId: string; count?: number }) =>
+      api.ai.flashcards(pageId, count),
+    onSuccess: (_res, { pageId }) => {
+      qc.invalidateQueries({ queryKey: ["nodes", { parentId: pageId }] });
+      qc.invalidateQueries({ queryKey: ["nodes"] });
+      qc.invalidateQueries({ queryKey: ["children"] });
+    },
   });
 }
 

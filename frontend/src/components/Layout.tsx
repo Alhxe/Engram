@@ -13,6 +13,7 @@ import InfoHint from "./InfoHint";
 import CommandPalette from "./CommandPalette";
 import GithubImportDialog from "./GithubImportDialog";
 import QuestionDialog from "./QuestionDialog";
+import AcademiaNav from "./AcademiaNav";
 
 function NavItem({ to, icon: Icon, label }: { to: string; icon: typeof Home; label: string }) {
   return (
@@ -195,7 +196,9 @@ export default function Layout() {
           </div>
         )}
 
-        <div className="mt-6 px-4">
+        <AcademiaNav />
+
+        <div className="mt-5 px-4">
           <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-dim">
             {t("nav.pages")}
           </span>

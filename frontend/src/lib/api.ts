@@ -224,6 +224,8 @@ export const api = {
     ) => request<void>(`/ai/tasks/${task}`, { method: "PUT", body: JSON.stringify(body) }),
     suggest: (nodeId: string) =>
       request<import("./types").AiSuggestionResponse>(`/ai/suggest/${nodeId}`, { method: "POST" }),
+    flashcards: (pageId: string, count = 6) =>
+      request<NodeResponse[]>(`/ai/flashcards/${pageId}?count=${count}`, { method: "POST" }),
     ask: (question: string, scopeId?: string | null) =>
       request<import("./types").AskResponse>("/ai/ask", {
         method: "POST",
@@ -283,9 +285,14 @@ export const api = {
     remove: (id: string) => request<void>(`/links/${id}`, { method: "DELETE" }),
   },
   srs: {
-    due: () => request<NodeResponse[]>("/srs/due"),
+    due: (scope?: string) => request<NodeResponse[]>(`/srs/due${scope ? `?scope=${scope}` : ""}`),
     grade: (id: string, grade: "AGAIN" | "HARD" | "GOOD" | "EASY") =>
       request<NodeResponse>(`/srs/${id}/grade?grade=${grade}`, { method: "POST" }),
+  },
+  academia: {
+    subjects: () => request<NodeResponse[]>("/academia/subjects"),
+    createSubject: (name: string) =>
+      request<NodeResponse>(`/academia/subjects?name=${encodeURIComponent(name)}`, { method: "POST" }),
   },
   github: {
     import: (repo: string) =>

@@ -1,13 +1,18 @@
 package com.engram.service;
 
+import com.engram.model.Node;
 import com.engram.model.PropertyType;
 import com.engram.repository.NodePropertyRepository;
 import com.engram.repository.NodeRepository;
 import com.engram.web.dto.NodeResponse;
 import com.engram.web.dto.PropertyDto;
 import java.time.LocalDate;
+import java.util.ArrayDeque;
 import java.util.Comparator;
+import java.util.Deque;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,11 +48,17 @@ public class SrsService {
         this.nodeService = nodeService;
     }
 
-    /** Cards due today (or never reviewed), soonest first; new cards lead. */
+    /**
+     * Cards due today (or never reviewed), soonest first; new cards lead.
+     * When {@code scopeId} is given, only cards within that page's subtree are
+     * returned — so you can review one subject or one topic instead of all.
+     */
     @Transactional(readOnly = true)
-    public List<NodeResponse> due() {
+    public List<NodeResponse> due(UUID scopeId) {
         String today = LocalDate.now().toString();
+        Set<UUID> scope = scopeId == null ? null : descendants(scopeId);
         return nodeRepository.findByTagName(CARD_TAG).stream()
+                .filter(card -> scope == null || scope.contains(card.getId()))
                 .filter(card -> {
                     String due = prop(card.getId(), DUE);
                     return due == null || due.isBlank() || due.compareTo(today) <= 0;
@@ -58,6 +69,22 @@ public class SrsService {
                 }))
                 .map(card -> nodeService.get(card.getId()))
                 .toList();
+    }
+
+    /** All descendant ids of a page (its whole subtree, excluding itself). */
+    private Set<UUID> descendants(UUID root) {
+        Set<UUID> ids = new HashSet<>();
+        Deque<UUID> stack = new ArrayDeque<>();
+        stack.push(root);
+        while (!stack.isEmpty()) {
+            UUID id = stack.pop();
+            for (Node child : nodeRepository.findByParentIdAndDeletedAtIsNullOrderByTitleAsc(id)) {
+                if (ids.add(child.getId())) {
+                    stack.push(child.getId());
+                }
+            }
+        }
+        return ids;
     }
 
     /** Grade a card and schedule its next review (Anki-style SM-2 variant). */

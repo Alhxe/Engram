@@ -99,9 +99,21 @@ WHAT YOU CAN DO
 TYPICAL FLOW to ingest a document:
 1. list_tags and search for related existing pages (for context and linking).
 2. create_page for each coherent section, choosing a fitting layout and reusing tags.
-3. set_property where structure helps; create_link between related pages.`;
+3. set_property where structure helps; create_link between related pages.
 
-const server = new McpServer({ name: "engram", version: "0.3.0" }, { instructions: INSTRUCTIONS });
+ACADEMIA (study area)
+- A dedicated study space on the same substrate. Subjects live under an "Academia" root page.
+- create_subject scaffolds a course: Temario (a "ruta" learning-path whose child pages are the
+  topics/temas), Apuntes, Flashcards, and a Preguntas smart collection (open questions).
+- A FLASHCARD is any page tagged "flashcard": title = question, content = answer. Create them by
+  hand, or use generate_flashcards to have AI make them from a topic (run it ON a tema, not on the
+  Temario, so cards nest under the tema).
+- Spaced repetition: review_due lists cards due today; pass scopeId to review just one subject or
+  one tema (its subtree). After showing a card, grade_card with AGAIN/HARD/GOOD/EASY reschedules it.
+- To help a student: create_subject, then per tema create_page notes + generate_flashcards; you can
+  also quiz them by calling review_due(scopeId) and grade_card on their answers.`;
+
+const server = new McpServer({ name: "engram", version: "0.4.0" }, { instructions: INSTRUCTIONS });
 
 const LAYOUT = z.enum(["DOCUMENT", "MINDMAP", "TABLE", "BOARD", "CALENDAR", "CHART"]);
 const PROPERTY_TYPE = z.enum([
@@ -328,6 +340,37 @@ tool(server, "fill_property",
   },
   ({ parentId, name, type, instruction }) =>
     api("/ai/fill", { method: "POST", body: JSON.stringify({ parentId, name, type, instruction }) }));
+
+// --- Academia / study (spaced repetition) -----------------------------------
+
+tool(server, "list_subjects",
+  "List the subjects in the Academia study area (each is a scaffolded course page).",
+  {},
+  () => api("/academia/subjects"));
+
+tool(server, "create_subject",
+  "Create a subject in Academia, scaffolded with Temario (a learning-path), Apuntes, Flashcards and "
+  + "an open-Questions smart collection. Then fill each tema and generate flashcards from it.",
+  { name: z.string().describe("Subject name, e.g. 'Sistemas Distribuidos'") },
+  ({ name }) => api(`/academia/subjects?name=${encodeURIComponent(name)}`, { method: "POST" }));
+
+tool(server, "generate_flashcards",
+  "Generate study flashcards from a page (its content + sub-pages) with AI; cards are created as "
+  + "child pages tagged 'flashcard'. Run it ON a topic/tema (not the Temario) so cards nest under it.",
+  { pageId: z.string(), count: z.number().int().optional().describe("How many cards (default 6)") },
+  ({ pageId, count }) => api(`/ai/flashcards/${pageId}?count=${count ?? 6}`, { method: "POST" }));
+
+tool(server, "review_due",
+  "List flashcards due for review today (spaced repetition). Optionally pass scopeId to review just "
+  + "one subject or one tema (its subtree) instead of everything.",
+  { scopeId: z.string().optional().describe("Page id to scope the review to; omit for all subjects") },
+  ({ scopeId }) => api(`/srs/due${scopeId ? `?scope=${scopeId}` : ""}`));
+
+tool(server, "grade_card",
+  "Grade a flashcard after review and reschedule it (spaced repetition): "
+  + "AGAIN (forgot), HARD, GOOD, or EASY.",
+  { id: z.string(), grade: z.enum(["AGAIN", "HARD", "GOOD", "EASY"]) },
+  ({ id, grade }) => api(`/srs/${id}/grade?grade=${grade}`, { method: "POST" }));
 
 // --- Resources --------------------------------------------------------------
 
