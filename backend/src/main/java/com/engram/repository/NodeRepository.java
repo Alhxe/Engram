@@ -1,6 +1,7 @@
 package com.engram.repository;
 
 import com.engram.model.Node;
+import com.engram.web.dto.GlobalGraphItem;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -36,6 +37,14 @@ public interface NodeRepository extends JpaRepository<Node, UUID> {
 
     @Query("select n.title from Node n where n.title <> '' and n.deletedAt is null")
     List<String> findAllTitles();
+
+    /** Every live page as a graph item — left join keeps the parentless roots. */
+    @Query("""
+            select new com.engram.web.dto.GlobalGraphItem(n.id, n.title, p.id)
+            from Node n left join n.parent p
+            where n.deletedAt is null
+            """)
+    List<GlobalGraphItem> findGraphItems();
 
     // --- Trash ---
 

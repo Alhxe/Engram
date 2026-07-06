@@ -12,6 +12,7 @@ import com.engram.repository.NodeRepository;
 import com.engram.web.dto.BacklinkResponse;
 import com.engram.web.dto.BreadcrumbItem;
 import com.engram.web.dto.CreateNodeRequest;
+import com.engram.web.dto.GlobalGraphItem;
 import com.engram.web.dto.NodeResponse;
 import com.engram.web.dto.NodeTreeItem;
 import com.engram.web.dto.PropertyDto;
@@ -621,6 +622,12 @@ public class NodeService {
                         node.getId(), node.getTitle(), node.getKind(), node.getLayout(),
                         nodeRepository.existsByParentIdAndDeletedAtIsNull(node.getId())))
                 .toList();
+    }
+
+    /** Every live page, stripped to what the global graph needs. One cheap query. */
+    @Transactional(readOnly = true)
+    public List<GlobalGraphItem> globalGraph() {
+        return nodeRepository.findGraphItems();
     }
 
     /** The one-hop connection graph of a page: its neighbors and the links between. */

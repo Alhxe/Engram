@@ -87,6 +87,10 @@ export function useLinks() {
   return useQuery({ queryKey: ["links"], queryFn: () => api.links.list() });
 }
 
+export function useGlobalGraph() {
+  return useQuery({ queryKey: ["global-graph"], queryFn: () => api.nodes.graph() });
+}
+
 function invalidateTree(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["nodes"] });
   qc.invalidateQueries({ queryKey: ["children"] });

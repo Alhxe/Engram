@@ -91,6 +91,7 @@ export const api = {
       const query = parentId ? `?parentId=${parentId}` : "";
       return request<NodeTreeItem[]>(`/nodes/children${query}`);
     },
+    graph: () => request<import("./types").GlobalGraphItem[]>("/nodes/graph"),
     breadcrumb: (id: string) => request<BreadcrumbItem[]>(`/nodes/${id}/breadcrumb`),
     get: (id: string) => request<NodeResponse>(`/nodes/${id}`),
     create: (body: CreateNodeRequest) =>
@@ -267,6 +268,11 @@ export const api = {
       }),
     ingestUndo: (importId: string) =>
       request<void>(`/ai/ingest/undo/${importId}`, { method: "POST" }),
+    edit: (nodeId: string, instruction: string) =>
+      request<import("./types").EditResponse>(`/ai/edit/${nodeId}`, {
+        method: "POST",
+        body: JSON.stringify({ instruction }),
+      }),
   },
   links: {
     list: () => request<LinkResponse[]>("/links"),

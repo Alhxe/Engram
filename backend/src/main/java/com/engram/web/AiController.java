@@ -8,6 +8,7 @@ import com.engram.service.AiService;
 import com.engram.service.AiSuggestionService;
 import com.engram.service.AiFillService;
 import com.engram.service.AskService;
+import com.engram.service.EditService;
 import com.engram.service.IngestionService;
 import com.engram.service.AiUsageService;
 import com.engram.service.NodeService;
@@ -16,6 +17,8 @@ import com.engram.web.dto.AiSettingsResponse;
 import com.engram.web.dto.AiSuggestionResponse;
 import com.engram.web.dto.AskRequest;
 import com.engram.web.dto.AskResponse;
+import com.engram.web.dto.EditRequest;
+import com.engram.web.dto.EditResponse;
 import com.engram.web.dto.IngestionCommitRequest;
 import com.engram.web.dto.IngestionPlan;
 import com.engram.web.dto.IngestionResult;
@@ -52,6 +55,7 @@ public class AiController {
     private final NodeService nodeService;
     private final AiUsageService usageService;
     private final SummaryService summaryService;
+    private final EditService editService;
 
     public AiController(AiService aiService,
                         AiSuggestionService suggestionService,
@@ -62,7 +66,8 @@ public class AiController {
                         com.engram.service.DuplicateService duplicateService,
                         NodeService nodeService,
                         AiUsageService usageService,
-                        SummaryService summaryService) {
+                        SummaryService summaryService,
+                        EditService editService) {
         this.aiService = aiService;
         this.suggestionService = suggestionService;
         this.ingestionService = ingestionService;
@@ -73,6 +78,7 @@ public class AiController {
         this.nodeService = nodeService;
         this.usageService = usageService;
         this.summaryService = summaryService;
+        this.editService = editService;
     }
 
     @GetMapping("/usage")
@@ -100,6 +106,12 @@ public class AiController {
         return fillService.fill(
                 SecurityUtils.requireUserId(), request.parentId(),
                 request.name(), request.type(), request.instruction());
+    }
+
+    @PostMapping("/edit/{nodeId}")
+    public EditResponse edit(
+            @PathVariable UUID nodeId, @Valid @RequestBody EditRequest request) {
+        return editService.edit(SecurityUtils.requireUserId(), nodeId, request.instruction());
     }
 
     @PostMapping("/suggest-links/{nodeId}")

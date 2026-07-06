@@ -121,6 +121,13 @@ export interface BreadcrumbItem {
   title: string;
 }
 
+/** One page in the global graph — id/title/parent only, so the whole base fits in one response. */
+export interface GlobalGraphItem {
+  id: string;
+  title: string;
+  parentId: string | null;
+}
+
 export interface TagResponse {
   id: string;
   name: string;
@@ -351,8 +358,17 @@ export interface PlannedPage {
   linkTitles: string[];
 }
 
+/** AI-proposed rewrite of a page: new body plus the pages it now references inline. */
+export interface EditResponse {
+  html: string;
+  linkedIds: string[];
+}
+
 export interface IngestionPlan {
   pages: PlannedPage[];
+  /** Existing page the AI suggests as destination (already resolved by the backend). */
+  suggestedParentTitle: string | null;
+  suggestedParentId: string | null;
 }
 
 export interface IngestionResult {

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ChevronRight, GitBranch, History, Link2, Maximize2, Minimize2, Network, Paperclip, Plus, Star } from "lucide-react";
+import { ChevronRight, GitBranch, History, Link2, Maximize2, Minimize2, Network, Paperclip, Plus, Sparkles, Star } from "lucide-react";
 import {
   useBacklinks,
   useBreadcrumb,
@@ -31,6 +31,7 @@ import LinkSuggestions from "@/components/LinkSuggestions";
 import PropertyBacklinks from "@/components/PropertyBacklinks";
 import SmartCollection from "@/components/SmartCollection";
 import PageMenu from "@/components/PageMenu";
+import EditWithAi from "@/components/EditWithAi";
 import { useI18n } from "@/i18n/I18nContext";
 import { LAYOUT_ICON } from "@/components/ui";
 
@@ -70,6 +71,7 @@ export default function NodePage() {
   const [wide, setWide] = useState(() => localStorage.getItem("engram.wide") === "1");
   const [editorFocused, setEditorFocused] = useState(false);
   const [openMeta, setOpenMeta] = useState<string | null>(null);
+  const [aiEditOpen, setAiEditOpen] = useState(false);
 
   const toggleWide = () =>
     setWide((w) => {
@@ -197,6 +199,16 @@ export default function NodePage() {
           })}
         </div>
 
+        {isDoc && (
+          <button
+            onClick={() => setAiEditOpen(true)}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-dim transition hover:bg-elev hover:text-accent"
+            title={t("aiEdit.button")}
+          >
+            <Sparkles className="h-4 w-4" strokeWidth={1.75} />
+          </button>
+        )}
+
         <button
           onClick={() => setFavorite.mutate(!node.favorite)}
           className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition ${
@@ -217,6 +229,14 @@ export default function NodePage() {
 
         <PageMenu node={node} title={title} content={content} onDelete={remove} />
       </header>
+
+      {aiEditOpen && (
+        <EditWithAi
+          nodeId={node.id}
+          onApply={(html) => edit(setContent)(html)}
+          onClose={() => setAiEditOpen(false)}
+        />
+      )}
 
       <div className={`mx-auto w-full flex-1 px-4 pb-16 pt-8 sm:px-8 sm:pt-10 ${widthClass}`}>
         <div className="group/head page-head">
