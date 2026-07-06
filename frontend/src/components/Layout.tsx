@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
-import { CalendarClock, CalendarDays, Code2, GitBranch, GraduationCap, HelpCircle, Home, Inbox, ListChecks, LogOut, Menu, Moon, Network, Plus, Search, Settings, Sparkles, Sprout, Star, Sun, Trash2, X } from "lucide-react";
+import { CalendarClock, CalendarDays, ChevronRight, Code2, GitBranch, GraduationCap, HelpCircle, Home, Inbox, ListChecks, LogOut, Menu, Moon, Network, Plus, Search, Settings, Sparkles, Sprout, Star, Sun, Trash2, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useCreateNode, useFavorites } from "@/lib/queries";
 import { clearSession, getUsername } from "@/lib/auth";
@@ -45,6 +45,8 @@ export default function Layout() {
   const [githubOpen, setGithubOpen] = useState(false);
   const [questionOpen, setQuestionOpen] = useState(false);
   const location = useLocation();
+  const SECONDARY = ["/timeline", "/graph", "/inbox", "/tasks", "/snippets", "/garden", "/trash", "/settings"];
+  const [moreOpen, setMoreOpen] = useState(() => SECONDARY.includes(location.pathname));
 
   // Close the mobile drawer whenever the route changes.
   useEffect(() => setMobileOpen(false), [location.pathname]);
@@ -170,14 +172,29 @@ export default function Layout() {
           </div>
           <NavItem to="/ask" icon={Sparkles} label={t("nav.ask")} />
           <NavItem to="/review" icon={GraduationCap} label={t("nav.review")} />
-          <NavItem to="/timeline" icon={CalendarClock} label={t("nav.timeline")} />
-          <NavItem to="/graph" icon={Network} label={t("nav.graph")} />
-          <NavItem to="/inbox" icon={Inbox} label={t("nav.inbox")} />
-          <NavItem to="/tasks" icon={ListChecks} label={t("nav.tasks")} />
-          <NavItem to="/snippets" icon={Code2} label={t("nav.snippets")} />
-          <NavItem to="/garden" icon={Sprout} label={t("nav.garden")} />
-          <NavItem to="/trash" icon={Trash2} label={t("nav.trash")} />
-          <NavItem to="/settings" icon={Settings} label={t("nav.settings")} />
+
+          <button
+            onClick={() => setMoreOpen((v) => !v)}
+            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] text-mid transition hover:bg-elev/60 hover:text-ink"
+          >
+            <ChevronRight
+              className={`h-4 w-4 text-dim transition-transform ${moreOpen ? "rotate-90" : ""}`}
+              strokeWidth={2}
+            />
+            {t("nav.more")}
+          </button>
+          {moreOpen && (
+            <>
+              <NavItem to="/timeline" icon={CalendarClock} label={t("nav.timeline")} />
+              <NavItem to="/graph" icon={Network} label={t("nav.graph")} />
+              <NavItem to="/inbox" icon={Inbox} label={t("nav.inbox")} />
+              <NavItem to="/tasks" icon={ListChecks} label={t("nav.tasks")} />
+              <NavItem to="/snippets" icon={Code2} label={t("nav.snippets")} />
+              <NavItem to="/garden" icon={Sprout} label={t("nav.garden")} />
+              <NavItem to="/trash" icon={Trash2} label={t("nav.trash")} />
+              <NavItem to="/settings" icon={Settings} label={t("nav.settings")} />
+            </>
+          )}
         </nav>
 
         {favorites && favorites.length > 0 && (
