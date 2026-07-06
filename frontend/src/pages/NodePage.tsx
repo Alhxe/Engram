@@ -296,6 +296,13 @@ export default function NodePage() {
                 </h2>
                 <div className="flex items-center gap-1">
                   <button
+                    onClick={() => navigate(`/ask?scope=${node.id}`)}
+                    className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-dim transition hover:bg-card hover:text-accent2"
+                    title={t("ask.aboutPage")}
+                  >
+                    <Sparkles className="h-3.5 w-3.5" strokeWidth={2} /> {t("nav.ask")}
+                  </button>
+                  <button
                     onClick={() => navigate(`/review?scope=${node.id}`)}
                     className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-dim transition hover:bg-card hover:text-accent2"
                     title={t("review.scopeHint")}

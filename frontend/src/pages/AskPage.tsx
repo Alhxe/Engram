@@ -1,27 +1,40 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Link, useSearchParams } from "react-router-dom";
-import { ArrowRight, FolderTree, Sparkles } from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowRight, FolderTree, Save, Sparkles } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
+import { formatMarkdown } from "@/lib/markdown";
 import type { AskResponse } from "@/lib/types";
 import { useI18n } from "@/i18n/I18nContext";
 
-// Light Markdown → HTML for the answer: bold/italic/code, citation chips, and
-// stripping of LaTeX delimiters (we don't render math, but the text stays clean).
-function formatAnswer(raw: string): string {
-  let s = raw.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  s = s.replace(/\\[()[\]]/g, "").replace(/\\,/g, " "); // \( \) \[ \] \,
-  s = s.replace(/^\s*[-*]\s+/gm, "• "); // bullet lines
-  s = s.replace(/`([^`]+)`/g, "<code>$1</code>");
-  s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-  s = s.replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
-  s = s.replace(/\[(\d+)\]/g, '<sup class="ask-cite">$1</sup>');
-  s = s.replace(/\n/g, "<br>");
-  return s;
+// Convert the answer into clean, editor-safe HTML for saving as a note
+// (paragraphs + lists + inline bold/code; citation markers dropped).
+function answerToNoteHtml(raw: string): string {
+  const inline = (line: string) =>
+    line
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/`([^`]+)`/g, "<code>$1</code>")
+      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+      .replace(/\[(\d+)\]/g, "");
+  return raw
+    .split(/\n{2,}/)
+    .map((block) => {
+      const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
+      if (lines.length === 0) return "";
+      if (lines.every((l) => /^[-*•]\s/.test(l))) {
+        return "<ul>" + lines.map((l) => "<li>" + inline(l.replace(/^[-*•]\s/, "")) + "</li>").join("") + "</ul>";
+      }
+      return "<p>" + lines.map(inline).join(" ") + "</p>";
+    })
+    .filter(Boolean)
+    .join("");
 }
 
 export default function AskPage() {
   const { t } = useI18n();
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [input, setInput] = useState("");
   const [asked, setAsked] = useState("");
@@ -43,6 +56,25 @@ export default function AskPage() {
 
   const ask = useMutation<AskResponse, unknown, string>({
     mutationFn: (q: string) => api.ai.ask(q, scope || null),
+  });
+
+  // Persist a synthesis as a real note, linked to the sources it drew from.
+  const save = useMutation({
+    mutationFn: async () => {
+      const answer = ask.data?.answer ?? "";
+      const page = await api.nodes.create({
+        title: asked || t("ask.heading"),
+        content: answerToNoteHtml(answer),
+        tags: ["síntesis"],
+      });
+      await Promise.all(
+        (ask.data?.sources ?? []).map((s) =>
+          api.links.create({ sourceId: page.id, targetId: s.nodeId, relType: "fuente" }),
+        ),
+      );
+      return page;
+    },
+    onSuccess: (page) => navigate(`/nodes/${page.id}`),
   });
 
   const setScope = (id: string) => {
@@ -117,8 +149,18 @@ export default function AskPage() {
             <>
               <div
                 className="ask-answer text-[15px] leading-relaxed text-ink"
-                dangerouslySetInnerHTML={{ __html: formatAnswer(data.answer) }}
+                dangerouslySetInnerHTML={{ __html: formatMarkdown(data.answer) }}
               />
+              <div className="mt-4">
+                <button
+                  onClick={() => save.mutate()}
+                  disabled={save.isPending}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-card px-3 py-1.5 text-xs font-medium text-mid transition hover:bg-elev hover:text-ink disabled:opacity-50"
+                >
+                  <Save className="h-3.5 w-3.5" strokeWidth={1.75} />
+                  {save.isPending ? t("ask.saving") : t("ask.save")}
+                </button>
+              </div>
               {data.sources.length > 0 && (
                 <div className="mt-8">
                   <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-dim">

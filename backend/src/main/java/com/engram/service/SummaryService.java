@@ -49,9 +49,15 @@ public class SummaryService {
         }
 
         String system = """
-                You are given a page and/or its related sub-notes. Write a concise overview:
-                the key points, common themes, and any open questions. Use short bullet points.
-                Answer in the notes' language.
+                You are given a page and/or its sub-notes. Write a concise overview of what they
+                actually SAY — the key points and takeaways, grouped sensibly. Use short markdown
+                bullets and **bold** for the important terms.
+                Rules:
+                - Summarize the CONTENT, not the page's structure or format. Never write meta lines
+                  like "this page presents a comparison using rows and columns".
+                - Only add an "Open questions" section if the notes genuinely leave something
+                  unresolved; otherwise omit it.
+                - Answer in the notes' language.
                 """;
         String prompt = "Notes:\n" + context;
 

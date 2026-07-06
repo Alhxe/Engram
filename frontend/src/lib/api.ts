@@ -290,6 +290,7 @@ export const api = {
     grade: (id: string, grade: "AGAIN" | "HARD" | "GOOD" | "EASY") =>
       request<NodeResponse>(`/srs/${id}/grade?grade=${grade}`, { method: "POST" }),
   },
+  dashboard: () => request<import("./types").DashboardResponse>("/dashboard"),
   academia: {
     subjects: () => request<NodeResponse[]>("/academia/subjects"),
     createSubject: (name: string) =>

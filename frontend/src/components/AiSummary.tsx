@@ -1,6 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { Sparkles, X } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
+import { formatMarkdown } from "@/lib/markdown";
 import { useI18n } from "@/i18n/I18nContext";
 
 /** Batch AI: summarize all sub-pages of a page into one overview. */
@@ -36,7 +37,10 @@ export default function AiSummary({ parentId }: { parentId: string }) {
               <X className="h-3.5 w-3.5" strokeWidth={2} />
             </button>
           </div>
-          <div className="whitespace-pre-wrap text-sm leading-relaxed text-ink">{summary}</div>
+          <div
+            className="ask-answer text-sm leading-relaxed text-ink"
+            dangerouslySetInnerHTML={{ __html: formatMarkdown(summary) }}
+          />
         </div>
       )}
     </div>

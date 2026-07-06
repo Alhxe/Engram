@@ -2,7 +2,7 @@ import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
 import AuthGate from "./components/AuthGate";
 import Layout from "./components/Layout";
-import NodesPage from "./pages/NodesPage";
+import HomePage from "./pages/HomePage";
 import NodePage from "./pages/NodePage";
 import SearchPage from "./pages/SearchPage";
 import AskPage from "./pages/AskPage";
@@ -21,7 +21,7 @@ function AppRoutes() {
       <Suspense fallback={null}>
         <Routes>
           <Route element={<Layout />}>
-            <Route index element={<NodesPage />} />
+            <Route index element={<HomePage />} />
             <Route path="nodes/:id" element={<NodePage />} />
             <Route path="graph" element={<GraphPage />} />
             <Route path="search" element={<SearchPage />} />

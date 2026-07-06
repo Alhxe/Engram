@@ -104,6 +104,20 @@ export interface SubjectReview {
   total: number;
 }
 
+export interface PageRef {
+  id: string;
+  title: string;
+  layout: PageLayout;
+}
+
+export interface DashboardResponse {
+  dueCards: number;
+  subjects: SubjectReview[];
+  recent: PageRef[];
+  openQuestions: PageRef[];
+  resurface: PageRef | null;
+}
+
 export interface CreateNodeRequest {
   title: string;
   content?: string | null;

@@ -188,6 +188,10 @@ export function useSrsSummary() {
   return useQuery({ queryKey: ["srs", "summary"], queryFn: () => api.srs.summary() });
 }
 
+export function useDashboard() {
+  return useQuery({ queryKey: ["dashboard"], queryFn: () => api.dashboard() });
+}
+
 export function useCreateSubject() {
   const qc = useQueryClient();
   return useMutation({
