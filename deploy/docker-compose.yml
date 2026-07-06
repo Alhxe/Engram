@@ -1,11 +1,12 @@
-# Engram — self-hosted backend runtime (Docker) + auto-update.
+# Engram — self-hosted backend runtime (Docker).
 #
-# The backend image is built and published to GHCR by CI on tag push; this host
-# only *pulls* and runs it. watchtower polls GHCR and redeploys when a new image
-# lands, so "publish a release -> live here" happens without any self-hosted CI
-# runner. The public door is a Cloudflare Tunnel run NATIVELY on the host (see
-# ~/.cloudflared/config.yml and deploy/README.md), reaching this backend at
-# 127.0.0.1:8080 — so cloudflared is intentionally NOT a container here.
+# The backend image is built and published to GHCR by CI on every backend change
+# on master; this host only *pulls* and runs it. Auto-update is done by a small
+# launchd poll (deploy/update.sh + deploy/com.engram.update.plist) that runs
+# `docker compose pull && up -d` on a timer — this replaces watchtower, which is
+# incompatible with the Docker Engine 29 API. The public door is a Cloudflare
+# Tunnel run NATIVELY on the host (see ~/.cloudflared/config.yml), reaching this
+# backend at 127.0.0.1:8080 — so cloudflared is intentionally NOT a container.
 #
 # Config/secrets come from ./engram.env (never committed). See engram.env.example.
 
@@ -27,20 +28,6 @@ services:
     # Loopback only: the public door is the Cloudflare Tunnel, not this port.
     ports:
       - "127.0.0.1:8080:8080"
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
-
-  watchtower:
-    image: containrrr/watchtower:latest
-    container_name: engram-watchtower
-    restart: unless-stopped
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    command: >-
-      --label-enable
-      --cleanup
-      --interval 300
-    # Only containers opting in via the watchtower.enable label are updated.
 
 volumes:
   engram-data:

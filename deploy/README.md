@@ -1,15 +1,16 @@
-# Engram — Deployment (Hermes-style: publish image → host pulls)
+# Engram — Deployment (publish image → host pulls)
 
-Backend runs on this Mac as a Docker stack, exposed by a **Cloudflare Tunnel**
-run natively on the host; the frontend is served by **Cloudflare Pages**. CI
-never touches this host — it only publishes a multi-arch image to **GHCR** on tag
-push, and this host *pulls* it.
+Backend runs on this Mac (Apple Silicon) as a Docker container, exposed by a
+**Cloudflare Tunnel** run natively on the host; the frontend is served by
+**Cloudflare Pages**. CI never touches this host — it builds a backend image and
+pushes it to **GHCR** on every backend change on `master`, and this host *pulls*
+it on a timer.
 
 ```
- push tag vX.Y.Z ─▶ GitHub Actions (ubuntu) ─▶ ghcr.io/alhxe/engram:latest
-                                                        │  (watchtower polls)
- Cloudflare Pages ◀─ push to master                     ▼
-   engram.alexperezalvarez.dev            this Mac: docker compose (backend + watchtower)
+ push to master (backend/**) ─▶ GitHub Actions (arm64) ─▶ ghcr.io/alhxe/engram:latest
+                                                                 │  (launchd poll, 2 min)
+ Cloudflare Pages ◀─ push to master                              ▼
+   engram.alexperezalvarez.dev              this Mac: docker compose (engram-backend)
         │                                          ▲  127.0.0.1:8080
         │                                   cloudflared (native, launchd)
         └────── HTTPS /api/v1 ──▶ engram-api.alexperezalvarez.dev ──(tunnel)──┘
@@ -19,49 +20,49 @@ push, and this host *pulls* it.
 - Frontend: `https://engram.alexperezalvarez.dev` (Cloudflare Pages)
 - Backend:  `https://engram-api.alexperezalvarez.dev` (Cloudflare Tunnel → `127.0.0.1:8080`)
 
-## Current live setup (already provisioned on this Mac)
-- Tunnel `engram` (id `a22b6db9-…`), config in `~/.cloudflared/config.yml`,
-  credentials in `~/.cloudflared/<id>.json`, DNS CNAME auto-created.
-- Tunnel runs under a LaunchAgent: `~/Library/LaunchAgents/com.engram.tunnel.plist`.
-- Backend + watchtower run via `deploy/docker-compose.yml` with `restart: unless-stopped`.
-- Secrets in `deploy/engram.env` (gitignored).
+## Auto-deploy model (what makes master → live work)
+1. **CI** (`.github/workflows/release.yml`) triggers on push to `master` when
+   `backend/**` changes (and on `vX.Y.Z` tags). It builds a native **arm64**
+   image and pushes `ghcr.io/alhxe/engram:latest` (+ `sha-<short>`).
+2. **Host poll** — LaunchAgent `com.engram.update` runs `deploy/update.sh` every
+   2 min: `docker compose pull backend && docker compose up -d backend`. When the
+   pulled digest differs, the container is recreated. (Replaces watchtower, which
+   is incompatible with the Docker Engine 29 API.)
+3. **GHCR package must be readable** by this host — either **public** (recommended,
+   see below) or `docker login ghcr.io` with a `read:packages` token.
 
-> ⚠️ For containers and the tunnel to come back after a reboot, enable
-> **Docker Desktop → Settings → General → Start Docker Desktop when you log in**.
-> Both depend on your GUI login session (Docker Desktop and the LaunchAgent).
+> Frontend changes go to Pages (push to master, no image). Only `backend/**`
+> changes rebuild the backend image.
+
+## LaunchAgents on this Mac
+| Agent | File | Purpose |
+|---|---|---|
+| `com.engram.tunnel` | `deploy/com.engram.tunnel.plist` | keeps the Cloudflare Tunnel running |
+| `com.engram.update` | `deploy/com.engram.update.plist` | polls GHCR and redeploys the backend |
+
+Backend container persists via Docker's `restart: unless-stopped`. For everything
+to come back after a reboot, enable **Docker Desktop → Start at login** (both the
+containers and the agents need the GUI login session).
 
 ---
 
-## Remaining one-time steps
+## One-time setup that still needs doing
 
-### 1. Publish the image so watchtower can take over
-The backend currently runs a locally-built image retagged as
-`ghcr.io/alhxe/engram:latest`. To hand updates over to CI:
-```bash
-git add -A && git commit -m "Add deployment (Docker, CI, Cloudflare)"
-git push origin master
-git tag v0.1.0 && git push origin v0.1.0   # triggers release.yml -> GHCR
-gh run watch
-```
-Then **make the GHCR package public** so watchtower pulls without login:
-GitHub → profile → Packages → `engram` → Package settings → Change visibility →
-Public. (It contains only the compiled app, no secrets.) After that, watchtower
-auto-updates this host within ~5 min of each new release.
+### Make the GHCR package public (so the poll can pull unattended)
+After the first CI build publishes the image: GitHub → profile → Packages →
+`engram` → Package settings → Change visibility → **Public**. (It contains only
+the compiled app, no secrets.) A public package avoids storing/rotating a
+registry token on the host.
 
-### 2. Cloudflare Pages (frontend)
-Cloudflare dashboard → Workers & Pages → Create → Pages → **Connect to Git** →
-`Alhxe/Engram`. Build settings:
-- Production branch: `master`
-- Root directory: `frontend`
-- Build command: `npm run build`
-- Output directory: `dist`
-- Environment variable: `VITE_API_BASE_URL = https://engram-api.alexperezalvarez.dev/api/v1`
+### Cloudflare Pages (frontend)
+Workers & Pages → Create → **Pages** tab → Connect to Git → `Alhxe/Engram`:
+- Production branch `master`, Root directory `frontend`
+- Build command `npm run build`, Output directory `dist`, **no deploy command**
+- Env var `VITE_API_BASE_URL = https://engram-api.alexperezalvarez.dev/api/v1`
+- Custom domain `engram.alexperezalvarez.dev`
 
-Then Pages → Custom domains → add `engram.alexperezalvarez.dev`. Pages rebuilds
-and deploys on every push to `master` — no Actions, no runner.
-
-If you want `*.pages.dev` preview builds to reach the API too, add that preview
-origin to `ENGRAM_CORS_ORIGINS` in `deploy/engram.env` and `docker compose up -d`.
+Do **not** merge the Cloudflare "Workers autoconfig" PR — the static Pages flow
+needs no in-repo Wrangler config.
 
 ---
 
@@ -69,19 +70,18 @@ origin to `ENGRAM_CORS_ORIGINS` in `deploy/engram.env` and `docker compose up -d
 
 | Action | Command |
 |---|---|
-| Ship a backend change | `git tag vX.Y.Z && git push origin vX.Y.Z` → watchtower updates this host (~5 min) |
+| Ship a backend change | push `backend/**` to `master` → CI builds → host poll updates within ~2–3 min |
 | Ship a frontend change | push to `master` (Pages rebuilds) |
-| Force backend update now | `cd deploy && docker compose pull && docker compose up -d` |
+| Cut a versioned release | `git tag vX.Y.Z && git push origin vX.Y.Z` (also makes a GitHub Release) |
+| Force an update now | `cd deploy && docker compose pull && docker compose up -d` |
+| Update log | `tail -f ~/Library/Logs/engram-update.log` |
 | Backend logs | `cd deploy && docker compose logs -f backend` |
 | Tunnel logs | `tail -f ~/Library/Logs/engram-tunnel.err.log` |
-| Restart backend | `cd deploy && docker compose restart` |
 | Restart tunnel | `launchctl kickstart -k gui/$(id -u)/com.engram.tunnel` |
-| Stop tunnel service | `launchctl bootout gui/$(id -u)/com.engram.tunnel` |
-| Backups | full-vault zips in the `engram-data` volume at `/app/data/backups` (cron 03:00) |
 
 ## Re-provisioning the tunnel from scratch (if ever needed)
 ```bash
-cloudflared tunnel login                                   # browser auth on the zone
+cloudflared tunnel login
 cloudflared tunnel create engram
 cloudflared tunnel route dns engram engram-api.alexperezalvarez.dev
 # write ~/.cloudflared/config.yml (tunnel id + credentials-file + ingress -> http://localhost:8080)
@@ -89,6 +89,5 @@ cp deploy/com.engram.tunnel.plist ~/Library/LaunchAgents/
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.engram.tunnel.plist
 ```
 
-**Auto-deploy model:** tag → CI pushes `:latest` → **watchtower** pulls it and
-recreates the backend container. Fully pull-based; nothing inbound; no
-self-hosted CI runner — safe for a public repo.
+**Auto-deploy is pull-based:** push → CI pushes `:latest` → host poll pulls it.
+Nothing inbound; no self-hosted CI runner — safe for a public repo.

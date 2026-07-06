@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  LaunchAgent that polls GHCR every 2 minutes and redeploys the backend when a
+  newer image has been published (replaces watchtower). Runs update.sh, which is
+  a no-op unless the image digest changed.
+
+  Install:
+    cp deploy/com.engram.update.plist ~/Library/LaunchAgents/com.engram.update.plist
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.engram.update.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.engram.update</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/alex/Codigos/Engram/deploy/update.sh</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StartInterval</key>
+    <integer>120</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/alex/Library/Logs/engram-update.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/alex/Library/Logs/engram-update.log</string>
+</dict>
+</plist>
