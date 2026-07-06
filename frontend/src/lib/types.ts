@@ -97,6 +97,13 @@ export interface NodeResponse {
   updatedAt: string | null;
 }
 
+export interface SubjectReview {
+  id: string;
+  title: string;
+  due: number;
+  total: number;
+}
+
 export interface CreateNodeRequest {
   title: string;
   content?: string | null;

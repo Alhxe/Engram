@@ -27,6 +27,7 @@ import BulkFill from "@/components/BulkFill";
 import TableOfContents from "@/components/TableOfContents";
 import PathProgress from "@/components/PathProgress";
 import FlashcardGenerator from "@/components/FlashcardGenerator";
+import FlashcardView from "@/components/FlashcardView";
 import Backlinks from "@/components/Backlinks";
 import LinkSuggestions from "@/components/LinkSuggestions";
 import PropertyBacklinks from "@/components/PropertyBacklinks";
@@ -269,7 +270,14 @@ export default function NodePage() {
           />
         )}
 
-        {isDoc ? (
+        {isDoc && tags.includes("flashcard") ? (
+          <FlashcardView
+            node={node}
+            content={content}
+            onChange={edit(setContent)}
+            onFocusChange={setEditorFocused}
+          />
+        ) : isDoc ? (
           <>
             <TableOfContents content={content} />
             <div className="mt-3 border-t border-line pt-4">

@@ -30,6 +30,12 @@ public class SrsController {
         return srsService.due(scope);
     }
 
+    /** Per-subject review counts, for the review hub. */
+    @GetMapping("/summary")
+    public List<com.engram.web.dto.SubjectReview> summary() {
+        return srsService.summary();
+    }
+
     /** Grade a card (AGAIN | HARD | GOOD | EASY) and reschedule it. */
     @PostMapping("/{id}/grade")
     public NodeResponse grade(@PathVariable UUID id, @RequestParam Grade grade) {

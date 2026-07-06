@@ -184,6 +184,10 @@ export function useSubjects() {
   return useQuery({ queryKey: ["academia", "subjects"], queryFn: () => api.academia.subjects() });
 }
 
+export function useSrsSummary() {
+  return useQuery({ queryKey: ["srs", "summary"], queryFn: () => api.srs.summary() });
+}
+
 export function useCreateSubject() {
   const qc = useQueryClient();
   return useMutation({

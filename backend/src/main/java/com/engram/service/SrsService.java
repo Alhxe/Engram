@@ -8,6 +8,7 @@ import com.engram.web.dto.NodeResponse;
 import com.engram.web.dto.PropertyDto;
 import java.time.LocalDate;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashSet;
@@ -39,13 +40,41 @@ public class SrsService {
     private final NodeRepository nodeRepository;
     private final NodePropertyRepository propertyRepository;
     private final NodeService nodeService;
+    private final AcademiaService academiaService;
 
     public SrsService(NodeRepository nodeRepository,
                       NodePropertyRepository propertyRepository,
-                      NodeService nodeService) {
+                      NodeService nodeService,
+                      AcademiaService academiaService) {
         this.nodeRepository = nodeRepository;
         this.propertyRepository = propertyRepository;
         this.nodeService = nodeService;
+        this.academiaService = academiaService;
+    }
+
+    /** Per-subject review counts (due + total cards) for the review hub. */
+    @Transactional(readOnly = true)
+    public List<com.engram.web.dto.SubjectReview> summary() {
+        String today = LocalDate.now().toString();
+        List<Node> cards = nodeRepository.findByTagName(CARD_TAG);
+        List<com.engram.web.dto.SubjectReview> out = new ArrayList<>();
+        for (NodeResponse subject : academiaService.subjects()) {
+            Set<UUID> scope = descendants(subject.id());
+            int total = 0;
+            int due = 0;
+            for (Node card : cards) {
+                if (!scope.contains(card.getId())) {
+                    continue;
+                }
+                total++;
+                String d = prop(card.getId(), DUE);
+                if (d == null || d.isBlank() || d.compareTo(today) <= 0) {
+                    due++;
+                }
+            }
+            out.add(new com.engram.web.dto.SubjectReview(subject.id(), subject.title(), due, total));
+        }
+        return out;
     }
 
     /**

@@ -286,6 +286,7 @@ export const api = {
   },
   srs: {
     due: (scope?: string) => request<NodeResponse[]>(`/srs/due${scope ? `?scope=${scope}` : ""}`),
+    summary: () => request<import("./types").SubjectReview[]>("/srs/summary"),
     grade: (id: string, grade: "AGAIN" | "HARD" | "GOOD" | "EASY") =>
       request<NodeResponse>(`/srs/${id}/grade?grade=${grade}`, { method: "POST" }),
   },
