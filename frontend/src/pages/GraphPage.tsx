@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Background, Controls, MarkerType, MiniMap, ReactFlow, type Edge, type Node } from "@xyflow/react";
 import { Network } from "lucide-react";
-import { useLinks, useNodes } from "@/lib/queries";
+import { useAllNodes, useLinks } from "@/lib/queries";
 import { getTheme } from "@/lib/theme";
 import { useI18n } from "@/i18n/I18nContext";
 import { EmptyState } from "@/components/ui";
@@ -94,7 +94,7 @@ export default function GraphPage() {
   const { t } = useI18n();
   const theme = getTheme();
   const c = PALETTES[theme];
-  const { data: nodesPage } = useNodes();
+  const { data: nodesPage } = useAllNodes();
   const { data: links } = useLinks();
 
   const { flowNodes, flowEdges } = useMemo(() => {

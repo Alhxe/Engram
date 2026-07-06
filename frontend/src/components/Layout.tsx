@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
-import { CalendarDays, Home, LogOut, Menu, Moon, Network, Plus, Search, Settings, Sparkles, Star, Sun, Trash2, X } from "lucide-react";
+import { CalendarClock, CalendarDays, GitBranch, GraduationCap, HelpCircle, Home, LogOut, Menu, Moon, Network, Plus, Search, Settings, Sparkles, Star, Sun, Trash2, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useCreateNode, useFavorites } from "@/lib/queries";
 import { clearSession, getUsername } from "@/lib/auth";
@@ -11,6 +11,8 @@ import PageTree from "./PageTree";
 import HelpButton from "./HelpButton";
 import InfoHint from "./InfoHint";
 import CommandPalette from "./CommandPalette";
+import GithubImportDialog from "./GithubImportDialog";
+import QuestionDialog from "./QuestionDialog";
 
 function NavItem({ to, icon: Icon, label }: { to: string; icon: typeof Home; label: string }) {
   return (
@@ -39,6 +41,8 @@ export default function Layout() {
   const [query, setQuery] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [theme, setThemeState] = useState(getTheme());
+  const [githubOpen, setGithubOpen] = useState(false);
+  const [questionOpen, setQuestionOpen] = useState(false);
   const location = useLocation();
 
   // Close the mobile drawer whenever the route changes.
@@ -109,14 +113,30 @@ export default function Layout() {
             </div>
             <span className="text-[15px] font-semibold tracking-tight text-ink">Engram</span>
           </Link>
-          <button
-            onClick={newPage}
-            disabled={createNode.isPending}
-            className="flex h-6 w-6 items-center justify-center rounded-md bg-elev text-mid transition hover:bg-line2 hover:text-ink"
-            title={t("pages.new")}
-          >
-            <Plus className="h-4 w-4" strokeWidth={2} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setQuestionOpen(true)}
+              className="flex h-6 w-6 items-center justify-center rounded-md bg-elev text-mid transition hover:bg-line2 hover:text-ink"
+              title={t("question.add")}
+            >
+              <HelpCircle className="h-3.5 w-3.5" strokeWidth={2} />
+            </button>
+            <button
+              onClick={() => setGithubOpen(true)}
+              className="flex h-6 w-6 items-center justify-center rounded-md bg-elev text-mid transition hover:bg-line2 hover:text-ink"
+              title={t("github.add")}
+            >
+              <GitBranch className="h-3.5 w-3.5" strokeWidth={2} />
+            </button>
+            <button
+              onClick={newPage}
+              disabled={createNode.isPending}
+              className="flex h-6 w-6 items-center justify-center rounded-md bg-elev text-mid transition hover:bg-line2 hover:text-ink"
+              title={t("pages.new")}
+            >
+              <Plus className="h-4 w-4" strokeWidth={2} />
+            </button>
+          </div>
         </div>
 
         <div className="px-3 pt-2">
@@ -148,6 +168,8 @@ export default function Layout() {
             <InfoHint text={t("help.today")} className="px-1.5" />
           </div>
           <NavItem to="/ask" icon={Sparkles} label={t("nav.ask")} />
+          <NavItem to="/review" icon={GraduationCap} label={t("nav.review")} />
+          <NavItem to="/timeline" icon={CalendarClock} label={t("nav.timeline")} />
           <NavItem to="/graph" icon={Network} label={t("nav.graph")} />
           <NavItem to="/trash" icon={Trash2} label={t("nav.trash")} />
           <NavItem to="/settings" icon={Settings} label={t("nav.settings")} />
@@ -213,6 +235,8 @@ export default function Layout() {
       </main>
 
       <CommandPalette />
+      {githubOpen && <GithubImportDialog onClose={() => setGithubOpen(false)} />}
+      {questionOpen && <QuestionDialog onClose={() => setQuestionOpen(false)} />}
     </div>
   );
 }

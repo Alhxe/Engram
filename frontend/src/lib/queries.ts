@@ -171,3 +171,47 @@ export function useUpdatePosition() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["nodes"] }),
   });
 }
+
+export function useSrsDue() {
+  return useQuery({ queryKey: ["srs", "due"], queryFn: () => api.srs.due() });
+}
+
+export function useSrsGrade() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, grade }: { id: string; grade: "AGAIN" | "HARD" | "GOOD" | "EASY" }) =>
+      api.srs.grade(id, grade),
+    // Invalidate the card itself; the review queue is managed locally so the
+    // session isn't disrupted mid-review.
+    onSuccess: (_res, { id }) => qc.invalidateQueries({ queryKey: ["node", id] }),
+  });
+}
+
+export function useAllNodes(size = 1000) {
+  return useQuery({
+    queryKey: ["nodes", "all", size],
+    queryFn: () => api.nodes.list({ size }),
+  });
+}
+
+export function useImportRepo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (repo: string) => api.github.import(repo),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["children"] });
+      qc.invalidateQueries({ queryKey: ["nodes"] });
+    },
+  });
+}
+
+export function useSyncRepo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.github.sync(id),
+    onSuccess: (_res, id) => {
+      qc.invalidateQueries({ queryKey: ["node", id] });
+      qc.invalidateQueries({ queryKey: ["nodes"] });
+    },
+  });
+}

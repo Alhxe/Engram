@@ -276,6 +276,16 @@ export const api = {
       request<LinkResponse>(`/links/${id}/type`, { method: "PUT", body: JSON.stringify({ relType }) }),
     remove: (id: string) => request<void>(`/links/${id}`, { method: "DELETE" }),
   },
+  srs: {
+    due: () => request<NodeResponse[]>("/srs/due"),
+    grade: (id: string, grade: "AGAIN" | "HARD" | "GOOD" | "EASY") =>
+      request<NodeResponse>(`/srs/${id}/grade?grade=${grade}`, { method: "POST" }),
+  },
+  github: {
+    import: (repo: string) =>
+      request<NodeResponse>(`/github/import?repo=${encodeURIComponent(repo)}`, { method: "POST" }),
+    sync: (id: string) => request<NodeResponse>(`/github/${id}/sync`, { method: "POST" }),
+  },
   attachments: {
     list: (nodeId: string) => request<AttachmentResponse[]>(`/nodes/${nodeId}/attachments`),
     upload: async (nodeId: string, file: File) => {

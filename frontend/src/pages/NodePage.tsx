@@ -25,6 +25,7 @@ import AiSummary from "@/components/AiSummary";
 import SchemaEditor from "@/components/SchemaEditor";
 import BulkFill from "@/components/BulkFill";
 import TableOfContents from "@/components/TableOfContents";
+import PathProgress from "@/components/PathProgress";
 import Backlinks from "@/components/Backlinks";
 import LinkSuggestions from "@/components/LinkSuggestions";
 import PropertyBacklinks from "@/components/PropertyBacklinks";
@@ -232,6 +233,8 @@ export default function NodePage() {
 
           <PropertiesEditor node={node} />
         </div>
+
+        {tags.includes("ruta") && <PathProgress nodeId={node.id} />}
 
         {isDoc && (
           <AiAutoSuggest

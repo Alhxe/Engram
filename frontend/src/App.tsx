@@ -6,6 +6,8 @@ import NodesPage from "./pages/NodesPage";
 import NodePage from "./pages/NodePage";
 import SearchPage from "./pages/SearchPage";
 import AskPage from "./pages/AskPage";
+import ReviewPage from "./pages/ReviewPage";
+import TimelinePage from "./pages/TimelinePage";
 import TrashPage from "./pages/TrashPage";
 import SettingsPage from "./pages/SettingsPage";
 import PublicPage from "./pages/PublicPage";
@@ -24,6 +26,8 @@ function AppRoutes() {
             <Route path="graph" element={<GraphPage />} />
             <Route path="search" element={<SearchPage />} />
             <Route path="ask" element={<AskPage />} />
+            <Route path="review" element={<ReviewPage />} />
+            <Route path="timeline" element={<TimelinePage />} />
             <Route path="trash" element={<TrashPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
