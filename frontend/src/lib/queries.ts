@@ -188,6 +188,18 @@ export function useSrsSummary() {
   return useQuery({ queryKey: ["srs", "summary"], queryFn: () => api.srs.summary() });
 }
 
+export function useSrsStats() {
+  return useQuery({ queryKey: ["srs", "stats"], queryFn: () => api.srs.stats() });
+}
+
+export function useExam(scope: string | undefined, count = 10) {
+  return useQuery({
+    queryKey: ["srs", "exam", scope ?? null, count],
+    queryFn: () => api.srs.exam(scope, count),
+    refetchOnWindowFocus: false,
+  });
+}
+
 export function useDashboard() {
   return useQuery({ queryKey: ["dashboard"], queryFn: () => api.dashboard() });
 }
@@ -230,8 +242,8 @@ export function useSrsGrade() {
 export function useGenerateFlashcards() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ pageId, count = 6 }: { pageId: string; count?: number }) =>
-      api.ai.flashcards(pageId, count),
+    mutationFn: ({ pageId, count = 6, style = "qa" }: { pageId: string; count?: number; style?: "qa" | "cloze" }) =>
+      api.ai.flashcards(pageId, count, style),
     onSuccess: (_res, { pageId }) => {
       qc.invalidateQueries({ queryKey: ["nodes", { parentId: pageId }] });
       qc.invalidateQueries({ queryKey: ["nodes"] });

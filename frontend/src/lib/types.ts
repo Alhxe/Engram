@@ -125,6 +125,15 @@ export interface TaskItem {
   done: boolean;
 }
 
+export interface StatsResponse {
+  total: number;
+  unseen: number;
+  learning: number;
+  mature: number;
+  due: number;
+  subjects: SubjectReview[];
+}
+
 export interface CreateNodeRequest {
   title: string;
   content?: string | null;

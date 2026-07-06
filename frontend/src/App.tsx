@@ -6,6 +6,7 @@ import HomePage from "./pages/HomePage";
 import InboxPage from "./pages/InboxPage";
 import TasksPage from "./pages/TasksPage";
 import SnippetsPage from "./pages/SnippetsPage";
+import ExamPage from "./pages/ExamPage";
 import NodePage from "./pages/NodePage";
 import SearchPage from "./pages/SearchPage";
 import AskPage from "./pages/AskPage";
@@ -30,6 +31,7 @@ function AppRoutes() {
             <Route path="search" element={<SearchPage />} />
             <Route path="ask" element={<AskPage />} />
             <Route path="review" element={<ReviewPage />} />
+            <Route path="exam" element={<ExamPage />} />
             <Route path="timeline" element={<TimelinePage />} />
             <Route path="inbox" element={<InboxPage />} />
             <Route path="tasks" element={<TasksPage />} />

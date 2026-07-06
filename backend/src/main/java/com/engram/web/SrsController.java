@@ -36,6 +36,19 @@ public class SrsController {
         return srsService.summary();
     }
 
+    /** Global study stats (card maturity + per-subject counts). */
+    @GetMapping("/stats")
+    public com.engram.web.dto.StatsResponse stats() {
+        return srsService.stats();
+    }
+
+    /** A shuffled set of cards for a mock exam over a scope (all cards, not just due). */
+    @GetMapping("/exam")
+    public List<NodeResponse> exam(
+            @RequestParam(required = false) UUID scope, @RequestParam(defaultValue = "10") int count) {
+        return srsService.exam(scope, count);
+    }
+
     /** Grade a card (AGAIN | HARD | GOOD | EASY) and reschedule it. */
     @PostMapping("/{id}/grade")
     public NodeResponse grade(@PathVariable UUID id, @RequestParam Grade grade) {

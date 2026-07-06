@@ -9,6 +9,7 @@ import com.engram.web.dto.PropertyDto;
 import java.time.LocalDate;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashSet;
@@ -142,6 +143,47 @@ public class SrsService {
         nodeService.upsertProperty(id, new PropertyDto(INTERVAL, PropertyType.NUMBER, String.valueOf(interval)));
         nodeService.upsertProperty(id, new PropertyDto(EASE, PropertyType.NUMBER, String.valueOf(Math.round(ease * 100) / 100.0)));
         return nodeService.upsertProperty(id, new PropertyDto(DUE, PropertyType.DATE, nextDue.toString()));
+    }
+
+    /** Global study stats: card maturity buckets + per-subject counts. */
+    @Transactional(readOnly = true)
+    public com.engram.web.dto.StatsResponse stats() {
+        String today = LocalDate.now().toString();
+        int total = 0;
+        int unseen = 0;
+        int learning = 0;
+        int mature = 0;
+        int due = 0;
+        for (Node card : nodeRepository.findByTagName(CARD_TAG)) {
+            total++;
+            String d = prop(card.getId(), DUE);
+            if (d == null || d.isBlank() || d.compareTo(today) <= 0) {
+                due++;
+            }
+            double interval = number(card.getId(), INTERVAL, 0);
+            if (interval <= 0) {
+                unseen++;
+            } else if (interval < 21) {
+                learning++;
+            } else {
+                mature++;
+            }
+        }
+        return new com.engram.web.dto.StatsResponse(total, unseen, learning, mature, due, summary());
+    }
+
+    /** A shuffled sample of cards for a mock exam (all cards in scope, not just due). */
+    @Transactional(readOnly = true)
+    public List<NodeResponse> exam(UUID scopeId, int count) {
+        Set<UUID> scope = scopeId == null ? null : descendants(scopeId);
+        List<Node> cards = new ArrayList<>(nodeRepository.findByTagName(CARD_TAG).stream()
+                .filter(card -> scope == null || scope.contains(card.getId()))
+                .toList());
+        Collections.shuffle(cards);
+        return cards.stream()
+                .limit(Math.max(1, count))
+                .map(card -> nodeService.get(card.getId()))
+                .toList();
     }
 
     private String prop(UUID nodeId, String name) {

@@ -114,8 +114,10 @@ public class AiController {
 
     @PostMapping("/flashcards/{pageId}")
     public List<com.engram.web.dto.NodeResponse> flashcards(
-            @PathVariable UUID pageId, @RequestParam(defaultValue = "6") int count) {
-        return flashcardService.generate(SecurityUtils.requireUserId(), pageId, count);
+            @PathVariable UUID pageId,
+            @RequestParam(defaultValue = "6") int count,
+            @RequestParam(defaultValue = "qa") String style) {
+        return flashcardService.generate(SecurityUtils.requireUserId(), pageId, count, style);
     }
 
     @PostMapping("/edit/{nodeId}")

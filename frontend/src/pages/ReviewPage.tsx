@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Check, ChevronRight, Eye, GraduationCap, Layers, RotateCcw } from "lucide-react";
-import { useNode, useSrsDue, useSrsGrade, useSrsSummary } from "@/lib/queries";
+import { useNode, useSrsDue, useSrsGrade, useSrsStats, useSrsSummary } from "@/lib/queries";
 import { GRADES, type Grade } from "@/lib/srs";
 import { useI18n } from "@/i18n/I18nContext";
 import { EmptyState } from "@/components/ui";
@@ -19,6 +19,7 @@ function ReviewHub() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const { data: subjects, isLoading } = useSrsSummary();
+  const { data: stats } = useSrsStats();
 
   if (isLoading) {
     return <p className="p-8 text-sm text-dim">{t("common.loading")}</p>;
@@ -26,6 +27,7 @@ function ReviewHub() {
 
   const list = subjects ?? [];
   const totalDue = list.reduce((sum, s) => sum + s.due, 0);
+  const pct = (n: number) => (stats && stats.total > 0 ? (n / stats.total) * 100 : 0);
 
   return (
     <div className="mx-auto max-w-2xl p-6">
@@ -33,6 +35,29 @@ function ReviewHub() {
         <GraduationCap className="h-4 w-4 text-accent2" strokeWidth={1.75} />
         <span className="font-semibold text-ink">{t("review.title")}</span>
       </div>
+
+      {stats && stats.total > 0 && (
+        <div className="mb-5 rounded-xl border border-line bg-card p-4">
+          <div className="mb-2 flex items-center justify-between text-xs">
+            <span className="text-mid">
+              {stats.total} {t("review.cards")}
+            </span>
+            <span className="text-accent2">
+              {stats.due} {t("review.pending")}
+            </span>
+          </div>
+          <div className="flex h-2 overflow-hidden rounded-full bg-elev">
+            <div className="bg-sky-500/70" style={{ width: `${pct(stats.unseen)}%` }} />
+            <div className="bg-amber-500/70" style={{ width: `${pct(stats.learning)}%` }} />
+            <div className="bg-emerald-500/70" style={{ width: `${pct(stats.mature)}%` }} />
+          </div>
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-dim">
+            <span className="text-sky-400">● {stats.unseen} {t("stats.unseen")}</span>
+            <span className="text-amber-400">● {stats.learning} {t("stats.learning")}</span>
+            <span className="text-emerald-400">● {stats.mature} {t("stats.mature")}</span>
+          </div>
+        </div>
+      )}
 
       {list.length === 0 ? (
         <div className="mt-6 text-center">

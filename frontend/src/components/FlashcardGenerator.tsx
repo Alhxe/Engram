@@ -17,6 +17,7 @@ export default function FlashcardGenerator({ pageId }: { pageId: string }) {
   const del = useDeleteNode();
   const [open, setOpen] = useState(false);
   const [count, setCount] = useState(8);
+  const [style, setStyle] = useState<"qa" | "cloze">("qa");
   const [lastBatch, setLastBatch] = useState<string[]>([]);
   const [created, setCreated] = useState<number | null>(null);
 
@@ -29,7 +30,7 @@ export default function FlashcardGenerator({ pageId }: { pageId: string }) {
         await Promise.all(lastBatch.map((id) => del.mutateAsync(id)));
         setLastBatch([]);
       }
-      const cards = await gen.mutateAsync({ pageId, count });
+      const cards = await gen.mutateAsync({ pageId, count, style });
       setLastBatch(cards.map((c) => c.id));
       setCreated(cards.length);
     } catch {
@@ -50,7 +51,7 @@ export default function FlashcardGenerator({ pageId }: { pageId: string }) {
       {open && (
         <div className="absolute right-0 z-20 mt-1 w-64 rounded-xl border border-line bg-panel p-3 shadow-xl shadow-black/40">
           <p className="mb-2.5 text-xs text-dim">{t("ai.flashcardsHint")}</p>
-          <div className="mb-3 flex items-center gap-1.5">
+          <div className="mb-2 flex items-center gap-1.5">
             <span className="mr-0.5 text-xs text-mid">{t("ai.count")}</span>
             {COUNTS.map((c) => (
               <button
@@ -61,6 +62,20 @@ export default function FlashcardGenerator({ pageId }: { pageId: string }) {
                 }`}
               >
                 {c}
+              </button>
+            ))}
+          </div>
+          <div className="mb-3 flex items-center gap-1.5">
+            <span className="mr-0.5 text-xs text-mid">{t("ai.style")}</span>
+            {(["qa", "cloze"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setStyle(s)}
+                className={`h-6 rounded px-2 text-xs transition ${
+                  style === s ? "bg-accent text-white" : "bg-elev text-mid hover:text-ink"
+                }`}
+              >
+                {t(`ai.style.${s}`)}
               </button>
             ))}
           </div>

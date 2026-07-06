@@ -47,7 +47,7 @@ public class AiFlashcardService {
     }
 
     @Transactional
-    public List<NodeResponse> generate(UUID userId, UUID pageId, int count) {
+    public List<NodeResponse> generate(UUID userId, UUID pageId, int count, String style) {
         Node page = nodeRepository.findById(pageId)
                 .filter(n -> n.getDeletedAt() == null)
                 .orElseThrow(() -> new AiException("Page not found"));
@@ -65,7 +65,18 @@ public class AiFlashcardService {
         }
 
         int n = Math.max(1, Math.min(count, MAX_CARDS));
-        String system = """
+        boolean cloze = "cloze".equalsIgnoreCase(style);
+        String system = cloze
+                ? """
+                You create fill-in-the-blank (cloze) study cards from a topic in a personal knowledge app.
+                Produce %d cards. For each, take a key fact and replace ONE important term with "____".
+                Rules:
+                - "q" is the sentence WITH the blank ("____"); "a" is the exact term that fills it.
+                - One blank per card, on the most testable term. Base cards ONLY on the given material.
+                - Answer in the material's language.
+                Respond with ONLY a JSON array: [{"q":"...","a":"..."}]
+                """.formatted(n)
+                : """
                 You create study flashcards from a topic in a personal knowledge app.
                 Produce %d question/answer cards that test understanding of the KEY ideas.
                 Rules:

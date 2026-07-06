@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ChevronRight, GitBranch, GraduationCap, History, Link2, Maximize2, Minimize2, Network, Paperclip, Plus, Sparkles, Star } from "lucide-react";
+import { ChevronRight, ClipboardCheck, GitBranch, GraduationCap, History, Link2, Maximize2, Minimize2, Network, Paperclip, Plus, Sparkles, Star } from "lucide-react";
 import {
   useBacklinks,
   useBreadcrumb,
@@ -308,6 +308,13 @@ export default function NodePage() {
                     title={t("review.scopeHint")}
                   >
                     <GraduationCap className="h-3.5 w-3.5" strokeWidth={2} /> {t("nav.review")}
+                  </button>
+                  <button
+                    onClick={() => navigate(`/exam?scope=${node.id}`)}
+                    className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-dim transition hover:bg-card hover:text-accent2"
+                    title={t("exam.title")}
+                  >
+                    <ClipboardCheck className="h-3.5 w-3.5" strokeWidth={2} /> {t("exam.button")}
                   </button>
                   <FlashcardGenerator pageId={node.id} />
                   <button
