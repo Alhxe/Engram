@@ -1,119 +1,21 @@
 import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { Check, ChevronRight, Eye, GraduationCap, Layers, RotateCcw } from "lucide-react";
-import { useNode, useSrsDue, useSrsGrade, useSrsStats, useSrsSummary } from "@/lib/queries";
+import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
+import { Check, ChevronRight, Eye, GraduationCap, RotateCcw } from "lucide-react";
+import { useNode, useSrsDue, useSrsGrade } from "@/lib/queries";
+// (review hub removed — review is launched per-subject)
 import { GRADES, type Grade } from "@/lib/srs";
 import { useI18n } from "@/i18n/I18nContext";
 import { EmptyState } from "@/components/ui";
 
+/** Review is always scoped to a subject/topic (launched from its page). There is
+ *  no global review — with no scope we send the user back home. */
 export default function ReviewPage() {
   const [params] = useSearchParams();
   const scope = params.get("scope") ?? undefined;
-  // No scope → the hub (pick a subject). scope="all" → everything due.
-  if (!scope) return <ReviewHub />;
+  if (!scope) return <Navigate to="/" replace />;
   return <ReviewSession scope={scope === "all" ? undefined : scope} />;
 }
 
-/** Landing screen: subjects with their due counts — review is chosen, not global. */
-function ReviewHub() {
-  const { t } = useI18n();
-  const navigate = useNavigate();
-  const { data: subjects, isLoading } = useSrsSummary();
-  const { data: stats } = useSrsStats();
-
-  if (isLoading) {
-    return <p className="p-8 text-sm text-dim">{t("common.loading")}</p>;
-  }
-
-  const list = subjects ?? [];
-  const totalDue = list.reduce((sum, s) => sum + s.due, 0);
-  const pct = (n: number) => (stats && stats.total > 0 ? (n / stats.total) * 100 : 0);
-
-  return (
-    <div className="mx-auto max-w-2xl p-6">
-      <div className="mb-5 flex items-center gap-2.5 text-sm">
-        <GraduationCap className="h-4 w-4 text-accent2" strokeWidth={1.75} />
-        <span className="font-semibold text-ink">{t("review.title")}</span>
-      </div>
-
-      {stats && stats.total > 0 && (
-        <div className="mb-5 rounded-xl border border-line bg-card p-4">
-          <div className="mb-2 flex items-center justify-between text-xs">
-            <span className="text-mid">
-              {stats.total} {t("review.cards")}
-            </span>
-            <span className="text-accent2">
-              {stats.due} {t("review.pending")}
-            </span>
-          </div>
-          <div className="flex h-2 overflow-hidden rounded-full bg-elev">
-            <div className="bg-sky-500/70" style={{ width: `${pct(stats.unseen)}%` }} />
-            <div className="bg-amber-500/70" style={{ width: `${pct(stats.learning)}%` }} />
-            <div className="bg-emerald-500/70" style={{ width: `${pct(stats.mature)}%` }} />
-          </div>
-          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-dim">
-            <span className="text-sky-400">● {stats.unseen} {t("stats.unseen")}</span>
-            <span className="text-amber-400">● {stats.learning} {t("stats.learning")}</span>
-            <span className="text-emerald-400">● {stats.mature} {t("stats.mature")}</span>
-          </div>
-        </div>
-      )}
-
-      {list.length === 0 ? (
-        <div className="mt-6 text-center">
-          <EmptyState>{t("review.noSubjects")}</EmptyState>
-          <p className="mt-4 text-xs text-dim">{t("review.hint")}</p>
-        </div>
-      ) : (
-        <div className="space-y-1.5">
-          {list.map((s) => {
-            const disabled = s.due === 0;
-            return (
-              <button
-                key={s.id}
-                onClick={() => !disabled && navigate(`/review?scope=${s.id}`)}
-                disabled={disabled}
-                className={`flex w-full items-center justify-between rounded-xl border border-line bg-card px-4 py-3 text-left transition ${
-                  disabled ? "opacity-60" : "hover:border-accent/50 hover:bg-elev"
-                }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  <GraduationCap className="h-4 w-4 text-dim" strokeWidth={1.75} />
-                  <span className="text-sm font-medium text-ink">{s.title || t("common.untitled")}</span>
-                </span>
-                <span className="flex items-center gap-2 text-xs">
-                  {s.due > 0 ? (
-                    <span className="rounded-full bg-accent/15 px-2 py-0.5 font-medium text-accent2">
-                      {s.due} {t("review.pending")}
-                    </span>
-                  ) : (
-                    <span className="text-dim">{t("review.upToDate")}</span>
-                  )}
-                  <span className="text-dim">
-                    {s.total} {t("review.cards")}
-                  </span>
-                  {!disabled && <ChevronRight className="h-4 w-4 text-dim" strokeWidth={2} />}
-                </span>
-              </button>
-            );
-          })}
-
-          {totalDue > 0 && (
-            <button
-              onClick={() => navigate("/review?scope=all")}
-              className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line2 px-4 py-2.5 text-sm text-mid transition hover:border-accent/50 hover:text-ink"
-            >
-              <Layers className="h-4 w-4" strokeWidth={1.75} />
-              {t("review.all")} ({totalDue})
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** A focused review session over a scope (a subject/topic subtree, or all). */
 function ReviewSession({ scope }: { scope?: string }) {
   const { t } = useI18n();
   const navigate = useNavigate();
@@ -128,13 +30,15 @@ function ReviewSession({ scope }: { scope?: string }) {
   }
 
   const cards = due ?? [];
+  const exit = () => navigate(scope ? `/nodes/${scope}` : "/");
 
   const back = (
     <button
-      onClick={() => navigate("/review")}
+      onClick={exit}
       className="mb-4 flex items-center gap-1 text-xs text-dim transition hover:text-ink"
     >
-      <ChevronRight className="h-3.5 w-3.5 rotate-180" strokeWidth={2} /> {t("review.title")}
+      <ChevronRight className="h-3.5 w-3.5 rotate-180" strokeWidth={2} />
+      {scopeNode?.title ?? t("review.title")}
     </button>
   );
 
@@ -169,11 +73,8 @@ function ReviewSession({ scope }: { scope?: string }) {
             <RotateCcw className="h-4 w-4" strokeWidth={1.75} />
             {t("review.restart")}
           </button>
-          <button
-            onClick={() => navigate("/review")}
-            className="rounded-lg px-4 py-2 text-sm text-dim transition hover:text-ink"
-          >
-            {t("review.title")}
+          <button onClick={exit} className="rounded-lg px-4 py-2 text-sm text-dim transition hover:text-ink">
+            {scopeNode?.title ?? t("review.title")}
           </button>
         </div>
       </div>

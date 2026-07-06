@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
-import { CalendarClock, CalendarDays, ChevronRight, Code2, GitBranch, GraduationCap, HelpCircle, Home, Inbox, ListChecks, LogOut, Menu, Moon, Network, Plus, Search, Settings, Sparkles, Sprout, Star, Sun, Trash2, X } from "lucide-react";
+import { CalendarClock, CalendarDays, ChevronRight, Code2, GitBranch, HelpCircle, Home, Inbox, ListChecks, LogOut, Menu, Moon, Network, Plus, Search, Settings, Sparkles, Sprout, Star, Sun, Trash2, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useCreateNode, useFavorites } from "@/lib/queries";
 import { clearSession, getUsername } from "@/lib/auth";
@@ -45,7 +45,7 @@ export default function Layout() {
   const [githubOpen, setGithubOpen] = useState(false);
   const [questionOpen, setQuestionOpen] = useState(false);
   const location = useLocation();
-  const SECONDARY = ["/timeline", "/graph", "/inbox", "/tasks", "/snippets", "/garden", "/trash", "/settings"];
+  const SECONDARY = ["/timeline", "/graph", "/inbox", "/tasks", "/snippets", "/garden", "/trash"];
   const [moreOpen, setMoreOpen] = useState(() => SECONDARY.includes(location.pathname));
 
   // Close the mobile drawer whenever the route changes.
@@ -171,7 +171,6 @@ export default function Layout() {
             <InfoHint text={t("help.today")} className="px-1.5" />
           </div>
           <NavItem to="/ask" icon={Sparkles} label={t("nav.ask")} />
-          <NavItem to="/review" icon={GraduationCap} label={t("nav.review")} />
 
           <button
             onClick={() => setMoreOpen((v) => !v)}
@@ -192,9 +191,9 @@ export default function Layout() {
               <NavItem to="/snippets" icon={Code2} label={t("nav.snippets")} />
               <NavItem to="/garden" icon={Sprout} label={t("nav.garden")} />
               <NavItem to="/trash" icon={Trash2} label={t("nav.trash")} />
-              <NavItem to="/settings" icon={Settings} label={t("nav.settings")} />
             </>
           )}
+          <NavItem to="/settings" icon={Settings} label={t("nav.settings")} />
         </nav>
 
         {favorites && favorites.length > 0 && (

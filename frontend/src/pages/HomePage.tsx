@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
-import { CalendarDays, ChevronRight, Clock, GraduationCap, HelpCircle, RefreshCw } from "lucide-react";
+import { CalendarDays, Clock, GraduationCap, HelpCircle, RefreshCw } from "lucide-react";
 import { api } from "@/lib/api";
 import { useDashboard } from "@/lib/queries";
 import { useI18n } from "@/i18n/I18nContext";
@@ -59,15 +59,9 @@ export default function HomePage() {
         <Card title={t("dash.study")} icon={GraduationCap}>
           {data.dueCards > 0 ? (
             <>
-              <button
-                onClick={() => navigate("/review")}
-                className="mb-2 flex w-full items-center justify-between rounded-lg bg-accent/15 px-3 py-2 text-left transition hover:bg-accent/25"
-              >
-                <span className="text-sm font-medium text-ink">
-                  {data.dueCards} {t("review.pending")}
-                </span>
-                <ChevronRight className="h-4 w-4 text-accent2" strokeWidth={2} />
-              </button>
+              <div className="mb-2 rounded-lg bg-accent/15 px-3 py-2 text-sm font-medium text-ink">
+                {data.dueCards} {t("review.pending")}
+              </div>
               <div className="space-y-0.5">
                 {data.subjects
                   .filter((s) => s.due > 0)
