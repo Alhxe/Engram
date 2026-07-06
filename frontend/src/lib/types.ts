@@ -134,6 +134,16 @@ export interface StatsResponse {
   subjects: SubjectReview[];
 }
 
+export interface GardenEntry {
+  token: string;
+  title: string;
+}
+
+export interface GuideSection {
+  title: string;
+  content: string | null;
+}
+
 export interface CreateNodeRequest {
   title: string;
   content?: string | null;

@@ -22,4 +22,10 @@ public class PublicController {
     public PublicPageResponse page(@PathVariable String token) {
         return nodeService.publicPage(token);
     }
+
+    /** The digital garden index: every publicly shared page. */
+    @GetMapping("/garden/index")
+    public java.util.List<com.engram.web.dto.GardenEntry> garden() {
+        return nodeService.garden();
+    }
 }

@@ -12,7 +12,9 @@ import com.engram.repository.NodeRepository;
 import com.engram.web.dto.BacklinkResponse;
 import com.engram.web.dto.BreadcrumbItem;
 import com.engram.web.dto.CreateNodeRequest;
+import com.engram.web.dto.GardenEntry;
 import com.engram.web.dto.GlobalGraphItem;
+import com.engram.web.dto.GuideSection;
 import com.engram.web.dto.NodeResponse;
 import com.engram.web.dto.NodeTreeItem;
 import com.engram.web.dto.PropertyDto;
@@ -564,6 +566,24 @@ public class NodeService {
                 .orElseThrow(() -> new NotFoundException("Page not found"));
         return new com.engram.web.dto.PublicPageResponse(
                 node.getTitle(), node.getContent(), node.getUpdatedAt());
+    }
+
+    /** All publicly shared pages — the digital garden index. */
+    @Transactional(readOnly = true)
+    public List<GardenEntry> garden() {
+        return nodeRepository.findShared().stream()
+                .filter(n -> n.getTitle() != null && !n.getTitle().isBlank())
+                .map(n -> new GardenEntry(n.getShareToken(), n.getTitle()))
+                .toList();
+    }
+
+    /** A page and its whole subtree as flat sections, for a printable study guide. */
+    @Transactional(readOnly = true)
+    public List<GuideSection> guide(UUID id) {
+        return subtree(id).stream()
+                .filter(n -> n.getDeletedAt() == null)
+                .map(n -> new GuideSection(n.getTitle(), n.getContent()))
+                .toList();
     }
 
     @Transactional

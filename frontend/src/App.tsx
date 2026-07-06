@@ -15,6 +15,8 @@ import TimelinePage from "./pages/TimelinePage";
 import TrashPage from "./pages/TrashPage";
 import SettingsPage from "./pages/SettingsPage";
 import PublicPage from "./pages/PublicPage";
+import GardenPage from "./pages/GardenPage";
+import GuidePage from "./pages/GuidePage";
 
 // Heavy, rarely-first pages (React Flow) load on demand to keep the initial bundle lean.
 const GraphPage = lazy(() => import("./pages/GraphPage"));
@@ -24,6 +26,8 @@ function AppRoutes() {
     <AuthGate>
       <Suspense fallback={null}>
         <Routes>
+          {/* Full-page, no sidebar — clean for print. */}
+          <Route path="guide" element={<GuidePage />} />
           <Route element={<Layout />}>
             <Route index element={<HomePage />} />
             <Route path="nodes/:id" element={<NodePage />} />
@@ -49,6 +53,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/p/:token" element={<PublicPage />} />
+      <Route path="/garden" element={<GardenPage />} />
       <Route path="/*" element={<AppRoutes />} />
     </Routes>
   );

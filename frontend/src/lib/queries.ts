@@ -204,6 +204,18 @@ export function useDashboard() {
   return useQuery({ queryKey: ["dashboard"], queryFn: () => api.dashboard() });
 }
 
+export function useGarden() {
+  return useQuery({ queryKey: ["garden"], queryFn: () => api.publicGarden() });
+}
+
+export function useGuide(id: string | undefined) {
+  return useQuery({
+    queryKey: ["guide", id],
+    queryFn: () => api.nodes.subtree(id as string),
+    enabled: !!id,
+  });
+}
+
 export function useInbox() {
   return useQuery({ queryKey: ["inbox"], queryFn: () => api.inbox() });
 }

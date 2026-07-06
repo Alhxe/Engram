@@ -93,6 +93,7 @@ export const api = {
     },
     graph: () => request<import("./types").GlobalGraphItem[]>("/nodes/graph"),
     breadcrumb: (id: string) => request<BreadcrumbItem[]>(`/nodes/${id}/breadcrumb`),
+    subtree: (id: string) => request<import("./types").GuideSection[]>(`/nodes/${id}/subtree`),
     get: (id: string) => request<NodeResponse>(`/nodes/${id}`),
     create: (body: CreateNodeRequest) =>
       request<NodeResponse>("/nodes", { method: "POST", body: JSON.stringify(body) }),
@@ -294,6 +295,7 @@ export const api = {
       request<NodeResponse>(`/srs/${id}/grade?grade=${grade}`, { method: "POST" }),
   },
   dashboard: () => request<import("./types").DashboardResponse>("/dashboard"),
+  publicGarden: () => request<import("./types").GardenEntry[]>("/public/garden/index"),
   inbox: () => request<import("./types").PageRef[]>("/inbox"),
   snippets: () => request<NodeResponse[]>("/snippets"),
   tasks: () => request<import("./types").TaskItem[]>("/tasks"),

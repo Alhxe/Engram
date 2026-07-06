@@ -85,6 +85,10 @@ public interface NodeRepository extends JpaRepository<Node, UUID> {
     @Query("select n from Node n join n.tags t where t.name = :tag and n.deletedAt is null")
     List<Node> findByTagName(String tag);
 
+    /** Live pages that are publicly shared (the digital garden). */
+    @Query("select n from Node n where n.shareToken is not null and n.deletedAt is null order by n.updatedAt desc")
+    List<Node> findShared();
+
     /** Live pages not touched since the cutoff. */
     @Query("select n from Node n where n.deletedAt is null and n.title <> '' and n.updatedAt < :cutoff order by n.updatedAt asc")
     List<Node> findStale(java.time.Instant cutoff, Pageable pageable);

@@ -52,6 +52,11 @@ public class NodeController {
         this.smartCollectionService = smartCollectionService;
     }
 
+    @GetMapping("/{id}/subtree")
+    public List<com.engram.web.dto.GuideSection> subtree(@PathVariable UUID id) {
+        return nodeService.guide(id);
+    }
+
     @PutMapping("/{id}/schema")
     public NodeResponse setSchema(
             @PathVariable UUID id, @RequestBody List<com.engram.web.dto.SchemaField> fields) {
