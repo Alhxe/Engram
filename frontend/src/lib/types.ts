@@ -134,6 +134,13 @@ export interface StatsResponse {
   subjects: SubjectReview[];
 }
 
+export interface ExamQuestion {
+  question: string;
+  options: string[];
+  answer: number;
+  explanation: string;
+}
+
 export interface GardenEntry {
   token: string;
   title: string;

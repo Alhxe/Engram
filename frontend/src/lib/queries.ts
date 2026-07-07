@@ -192,11 +192,9 @@ export function useSrsStats() {
   return useQuery({ queryKey: ["srs", "stats"], queryFn: () => api.srs.stats() });
 }
 
-export function useExam(scope: string | undefined, count = 10) {
-  return useQuery({
-    queryKey: ["srs", "exam", scope ?? null, count],
-    queryFn: () => api.srs.exam(scope, count),
-    refetchOnWindowFocus: false,
+export function useGenerateExam() {
+  return useMutation({
+    mutationFn: ({ pageId, count }: { pageId: string; count: number }) => api.ai.exam(pageId, count),
   });
 }
 

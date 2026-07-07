@@ -1,85 +1,134 @@
 import { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Check, Eye, RotateCcw, X } from "lucide-react";
-import { useExam, useNode } from "@/lib/queries";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Check, ClipboardCheck, RotateCcw, Sparkles, X } from "lucide-react";
+import { ApiError } from "@/lib/api";
+import { useGenerateExam, useNode } from "@/lib/queries";
 import { useI18n } from "@/i18n/I18nContext";
-import { EmptyState } from "@/components/ui";
+import type { ExamQuestion } from "@/lib/types";
 
-/** Mock exam: a shuffled set of a subject's cards, self-graded right/wrong, with
- *  a final score. Unlike review, it doesn't reschedule — it's a test. */
+const COUNTS = [5, 10, 15];
+
+/** AI-written multiple-choice exam over a subject: complex, application-level
+ *  questions, auto-graded, with per-question explanations. */
 export default function ExamPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const scope = params.get("scope") ?? undefined;
-  const count = Number(params.get("count") ?? "10") || 10;
+  const { data: node } = useNode(scope);
+  const gen = useGenerateExam();
 
-  const { data: cards, isLoading, refetch } = useExam(scope, count);
-  const { data: scopeNode } = useNode(scope);
-
+  const [count, setCount] = useState(10);
+  const [questions, setQuestions] = useState<ExamQuestion[] | null>(null);
   const [index, setIndex] = useState(0);
-  const [revealed, setRevealed] = useState(false);
-  const [wrong, setWrong] = useState<string[]>([]);
+  const [answers, setAnswers] = useState<number[]>([]);
+  const [finished, setFinished] = useState(false);
 
-  if (isLoading) {
-    return <p className="p-8 text-sm text-dim">{t("common.loading")}</p>;
-  }
-
-  const list = cards ?? [];
-
-  const restart = () => {
-    setIndex(0);
-    setRevealed(false);
-    setWrong([]);
-    refetch();
+  const start = () => {
+    if (!scope) return;
+    gen.mutate(
+      { pageId: scope, count },
+      {
+        onSuccess: (qs) => {
+          setQuestions(qs);
+          setIndex(0);
+          setAnswers([]);
+          setFinished(false);
+        },
+      },
+    );
   };
 
-  if (list.length === 0) {
+  const error = gen.error instanceof ApiError ? gen.error.message : null;
+
+  // --- Start screen ---
+  if (!questions) {
     return (
-      <div className="mx-auto max-w-2xl p-10 text-center">
-        <EmptyState>{t("exam.empty")}</EmptyState>
+      <div className="mx-auto max-w-2xl p-8">
+        <div className="rounded-2xl border border-line bg-card p-6">
+          <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-ink">
+            <ClipboardCheck className="h-4 w-4 text-accent2" strokeWidth={1.75} /> {t("exam.title")}
+            {node && <span className="text-accent2">· {node.title}</span>}
+          </div>
+          <p className="mb-4 text-sm text-dim">{t("exam.intro")}</p>
+          <div className="mb-4 flex items-center gap-1.5">
+            <span className="mr-1 text-xs text-mid">{t("exam.count")}</span>
+            {COUNTS.map((c) => (
+              <button
+                key={c}
+                onClick={() => setCount(c)}
+                className={`h-7 w-8 rounded text-sm transition ${
+                  count === c ? "bg-accent text-white" : "bg-elev text-mid hover:text-ink"
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={start}
+            disabled={gen.isPending || !scope}
+            className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-accent2 disabled:opacity-50"
+          >
+            <Sparkles className="h-4 w-4" strokeWidth={1.75} /> {gen.isPending ? t("exam.generating") : t("exam.start")}
+          </button>
+          {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+        </div>
       </div>
     );
   }
 
-  // Result screen
-  if (index >= list.length) {
-    const score = list.length - wrong.length;
-    const pct = Math.round((score / list.length) * 100);
-    const failed = list.filter((c) => wrong.includes(c.id));
+  // --- Result ---
+  if (finished) {
+    const score = questions.reduce((s, q, i) => s + (answers[i] === q.answer ? 1 : 0), 0);
+    const pct = Math.round((score / questions.length) * 100);
     return (
       <div className="mx-auto max-w-2xl p-8">
         <div className="rounded-2xl border border-line bg-card p-6 text-center">
           <div className="text-4xl font-bold text-ink">
-            {score}/{list.length}
+            {score}/{questions.length}
           </div>
-          <div className={`mt-1 text-sm font-medium ${pct >= 70 ? "text-emerald-400" : "text-amber-400"}`}>
-            {pct}%
-          </div>
+          <div className={`mt-1 text-sm font-medium ${pct >= 70 ? "text-emerald-400" : "text-amber-400"}`}>{pct}%</div>
         </div>
 
-        {failed.length > 0 && (
-          <div className="mt-6">
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-dim">{t("exam.failed")}</h2>
-            <ul className="space-y-0.5">
-              {failed.map((c) => (
-                <li key={c.id}>
-                  <Link
-                    to={`/nodes/${c.id}`}
-                    className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-mid transition hover:bg-elev/60 hover:text-ink"
-                  >
-                    <X className="h-3.5 w-3.5 shrink-0 text-red-400" strokeWidth={2} />
-                    <span className="truncate">{c.title || t("common.untitled")}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        <div className="mt-6 space-y-4">
+          {questions.map((q, i) => {
+            const ok = answers[i] === q.answer;
+            return (
+              <div key={i} className="rounded-xl border border-line bg-card p-4">
+                <p className="mb-2 flex items-start gap-2 text-sm font-medium text-ink">
+                  {ok ? (
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" strokeWidth={2} />
+                  ) : (
+                    <X className="mt-0.5 h-4 w-4 shrink-0 text-red-400" strokeWidth={2} />
+                  )}
+                  {q.question}
+                </p>
+                <ul className="space-y-1 text-sm">
+                  {q.options.map((o, oi) => (
+                    <li
+                      key={oi}
+                      className={`rounded px-2 py-1 ${
+                        oi === q.answer
+                          ? "bg-emerald-500/15 text-emerald-300"
+                          : oi === answers[i]
+                            ? "bg-red-500/15 text-red-300"
+                            : "text-mid"
+                      }`}
+                    >
+                      {o}
+                    </li>
+                  ))}
+                </ul>
+                {q.explanation && <p className="mt-2 text-xs text-dim">{q.explanation}</p>}
+              </div>
+            );
+          })}
+        </div>
 
         <div className="mt-6 flex justify-center gap-2">
           <button
-            onClick={restart}
+            onClick={() => setQuestions(null)}
             className="flex items-center gap-2 rounded-lg border border-line bg-card px-4 py-2 text-sm text-ink transition hover:bg-elev"
           >
             <RotateCcw className="h-4 w-4" strokeWidth={1.75} /> {t("exam.retry")}
@@ -97,60 +146,67 @@ export default function ExamPage() {
     );
   }
 
-  const card = list[index];
-  const answer = (ok: boolean) => {
-    if (!ok) setWrong((w) => [...w, card.id]);
-    setRevealed(false);
-    setIndex((i) => i + 1);
+  // --- Question flow ---
+  const q = questions[index];
+  const selected = answers[index];
+  const select = (oi: number) => {
+    const next = [...answers];
+    next[index] = oi;
+    setAnswers(next);
+  };
+  const advance = () => {
+    if (index + 1 >= questions.length) setFinished(true);
+    else setIndex(index + 1);
   };
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col p-6">
-      <div className="mb-4 flex items-center gap-2.5 text-sm">
+    <div className="mx-auto max-w-2xl p-6">
+      <div className="mb-2 flex items-center gap-2.5 text-sm">
+        <ClipboardCheck className="h-4 w-4 text-accent2" strokeWidth={1.75} />
         <span className="font-semibold text-ink">{t("exam.title")}</span>
-        {scopeNode && <span className="text-xs text-accent2">· {scopeNode.title}</span>}
         <span className="text-xs text-dim">
-          {index + 1}/{list.length}
+          {index + 1}/{questions.length}
         </span>
       </div>
-
-      <div className="h-1 overflow-hidden rounded-full bg-elev">
-        <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${(index / list.length) * 100}%` }} />
+      <div className="mb-4 h-1 overflow-hidden rounded-full bg-elev">
+        <div className="h-full bg-accent transition-all" style={{ width: `${(index / questions.length) * 100}%` }} />
       </div>
 
-      <div className="mt-4 rounded-2xl border border-line bg-card p-6 shadow-sm">
-        <p className="text-lg font-semibold text-ink">{card.title || t("common.untitled")}</p>
-        {revealed ? (
-          <div
-            className="mt-5 border-t border-line pt-5 text-[15px] leading-relaxed text-ink [&_code]:rounded [&_code]:bg-elev [&_code]:px-1 [&_li]:ml-4 [&_li]:list-disc [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-elev [&_pre]:p-3 [&_strong]:font-semibold"
-            dangerouslySetInnerHTML={{ __html: card.content ?? "" }}
-          />
-        ) : (
-          <button
-            onClick={() => setRevealed(true)}
-            className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg border border-line bg-elev/50 py-3 text-sm font-medium text-mid transition hover:bg-elev hover:text-ink"
-          >
-            <Eye className="h-4 w-4" strokeWidth={1.75} /> {t("review.show")}
-          </button>
-        )}
-      </div>
-
-      {revealed && (
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <button
-            onClick={() => answer(false)}
-            className="flex items-center justify-center gap-2 rounded-lg border border-red-500/40 py-2.5 text-sm font-medium text-red-300 transition hover:bg-red-500/15"
-          >
-            <X className="h-4 w-4" strokeWidth={2} /> {t("exam.wrong")}
-          </button>
-          <button
-            onClick={() => answer(true)}
-            className="flex items-center justify-center gap-2 rounded-lg border border-emerald-500/40 py-2.5 text-sm font-medium text-emerald-300 transition hover:bg-emerald-500/15"
-          >
-            <Check className="h-4 w-4" strokeWidth={2} /> {t("exam.right")}
-          </button>
+      <div className="rounded-2xl border border-line bg-card p-6">
+        <p className="mb-4 text-base font-medium text-ink">{q.question}</p>
+        <div className="space-y-2">
+          {q.options.map((o, oi) => (
+            <button
+              key={oi}
+              onClick={() => select(oi)}
+              className={`flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left text-sm transition ${
+                selected === oi
+                  ? "border-accent bg-accent/10 text-ink"
+                  : "border-line text-mid hover:border-line2 hover:text-ink"
+              }`}
+            >
+              <span
+                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[11px] ${
+                  selected === oi ? "border-accent bg-accent text-white" : "border-line2 text-dim"
+                }`}
+              >
+                {String.fromCharCode(65 + oi)}
+              </span>
+              {o}
+            </button>
+          ))}
         </div>
-      )}
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <button
+          onClick={advance}
+          disabled={selected === undefined}
+          className="rounded-lg bg-accent px-5 py-2 text-sm font-medium text-white transition hover:bg-accent2 disabled:opacity-50"
+        >
+          {index + 1 >= questions.length ? t("exam.finish") : t("exam.next")}
+        </button>
+      </div>
     </div>
   );
 }

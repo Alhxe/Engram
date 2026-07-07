@@ -8,6 +8,7 @@ import com.engram.service.AiService;
 import com.engram.service.AiSuggestionService;
 import com.engram.service.AiFillService;
 import com.engram.service.AiFlashcardService;
+import com.engram.service.AiExamService;
 import com.engram.service.AskService;
 import com.engram.service.EditService;
 import com.engram.service.IngestionService;
@@ -52,6 +53,7 @@ public class AiController {
     private final AskService askService;
     private final AiFillService fillService;
     private final AiFlashcardService flashcardService;
+    private final AiExamService examService;
     private final com.engram.service.LinkSuggestionService linkSuggestionService;
     private final com.engram.service.DuplicateService duplicateService;
     private final NodeService nodeService;
@@ -65,6 +67,7 @@ public class AiController {
                         AskService askService,
                         AiFillService fillService,
                         AiFlashcardService flashcardService,
+                        AiExamService examService,
                         com.engram.service.LinkSuggestionService linkSuggestionService,
                         com.engram.service.DuplicateService duplicateService,
                         NodeService nodeService,
@@ -77,6 +80,7 @@ public class AiController {
         this.askService = askService;
         this.fillService = fillService;
         this.flashcardService = flashcardService;
+        this.examService = examService;
         this.linkSuggestionService = linkSuggestionService;
         this.duplicateService = duplicateService;
         this.nodeService = nodeService;
@@ -110,6 +114,12 @@ public class AiController {
         return fillService.fill(
                 SecurityUtils.requireUserId(), request.parentId(),
                 request.name(), request.type(), request.instruction());
+    }
+
+    @PostMapping("/exam/{pageId}")
+    public List<com.engram.web.dto.ExamQuestion> exam(
+            @PathVariable UUID pageId, @RequestParam(defaultValue = "8") int count) {
+        return examService.generate(SecurityUtils.requireUserId(), pageId, count);
     }
 
     @PostMapping("/flashcards/{pageId}")

@@ -227,6 +227,8 @@ export const api = {
       request<import("./types").AiSuggestionResponse>(`/ai/suggest/${nodeId}`, { method: "POST" }),
     flashcards: (pageId: string, count = 6, style: "qa" | "cloze" = "qa") =>
       request<NodeResponse[]>(`/ai/flashcards/${pageId}?count=${count}&style=${style}`, { method: "POST" }),
+    exam: (pageId: string, count: number) =>
+      request<import("./types").ExamQuestion[]>(`/ai/exam/${pageId}?count=${count}`, { method: "POST" }),
     ask: (question: string, scopeId?: string | null) =>
       request<import("./types").AskResponse>("/ai/ask", {
         method: "POST",
