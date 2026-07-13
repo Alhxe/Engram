@@ -61,7 +61,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (response.status === 204) {
     return undefined as T;
   }
-  return response.json() as Promise<T>;
+  // Some endpoints return 200 with an empty body (e.g. a nullable resource like
+  // today's menu when none exists). Guard against JSON.parse on empty input.
+  const text = await response.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 
 export const api = {
