@@ -11,12 +11,15 @@ import com.engram.web.dto.NodeResponse;
 import com.engram.web.dto.NodeTreeItem;
 import com.engram.web.dto.RecipeRequest;
 import com.engram.web.dto.SaludStatusResponse;
+import com.engram.web.dto.SessionRequest;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -88,6 +91,24 @@ public class SaludController {
     @PostMapping("/sessions/{id}/skip")
     public NodeResponse skip(@PathVariable UUID id) {
         return saludService.skipSession(id);
+    }
+
+    /** Create a custom training session (managed from the panel). */
+    @PostMapping("/sessions")
+    public NodeResponse createSession(@RequestBody SessionRequest body) {
+        return saludService.createSession(body.fecha(), body.tipo(), body.objetivo());
+    }
+
+    /** Edit a session (tipo/objetivo/fecha/estado). */
+    @PutMapping("/sessions/{id}")
+    public NodeResponse updateSession(@PathVariable UUID id, @RequestBody SessionRequest body) {
+        return saludService.updateSession(id, body.fecha(), body.tipo(), body.objetivo(), body.estado());
+    }
+
+    /** Delete a session (to trash). */
+    @DeleteMapping("/sessions/{id}")
+    public void deleteSession(@PathVariable UUID id) {
+        saludService.deleteSession(id);
     }
 
     /** Regenerate pending weeks from the latest topes + running schedule. */

@@ -1,8 +1,20 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ChevronLeft, ChevronRight, ChefHat, RefreshCw, Sparkles, UtensilsCrossed } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChefHat,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Sparkles,
+  Trash2,
+  UtensilsCrossed,
+} from "lucide-react";
 import type { MealIdea, NodeResponse } from "@/lib/types";
 import {
+  useCreateWorkout,
+  useDeleteWorkout,
   useGenerateMenu,
   useGenerateRecipe,
   useRecalculateSalud,
@@ -12,6 +24,7 @@ import {
   useSaludWeek,
   useSetSaludWeek,
   useSuggestDishes,
+  useUpdateWorkout,
   useWeighIn,
 } from "@/lib/queries";
 import { useI18n } from "@/i18n/I18nContext";
@@ -69,7 +82,152 @@ export default function SaludPage() {
       <TodayMenu />
       <MealIdeas />
 
-      <Section title={`${t("salud.thisWeek")} · ${t("salud.week")} ${week}`} items={weekSessions} />
+      <WorkoutManager title={`${t("salud.thisWeek")} · ${t("salud.week")} ${week}`} items={weekSessions} />
+    </div>
+  );
+}
+
+const TIPOS = [
+  "Calistenia A",
+  "Calistenia B",
+  "Calistenia C",
+  "Carrera Z2",
+  "Carrera intervalos",
+  "Carrera larga",
+  "Descanso",
+];
+const ESTADOS = ["Pendiente", "Hecho", "Saltado"];
+
+function WorkoutManager({ title, items }: { title: string; items?: NodeResponse[] }) {
+  const { t } = useI18n();
+  const del = useDeleteWorkout();
+  const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
+
+  return (
+    <section className="mb-6">
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-dim">{title}</h2>
+        <button
+          onClick={() => {
+            setAdding((a) => !a);
+            setEditing(null);
+          }}
+          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-dim transition hover:bg-card hover:text-accent2"
+        >
+          <Plus className="h-3.5 w-3.5" strokeWidth={2} /> {t("salud.newWorkout")}
+        </button>
+      </div>
+
+      {adding && <WorkoutForm onDone={() => setAdding(false)} />}
+
+      <div className="space-y-1">
+        {(items ?? []).map((s) =>
+          editing === s.id ? (
+            <WorkoutForm key={s.id} session={s} onDone={() => setEditing(null)} />
+          ) : (
+            <WorkoutRow
+              key={s.id}
+              s={s}
+              onEdit={() => {
+                setEditing(s.id);
+                setAdding(false);
+              }}
+              onDelete={() => del.mutate(s.id)}
+            />
+          ),
+        )}
+        {(!items || items.length === 0) && !adding && <p className="text-[13px] text-dim">—</p>}
+      </div>
+    </section>
+  );
+}
+
+function WorkoutRow({ s, onEdit, onDelete }: { s: NodeResponse; onEdit: () => void; onDelete: () => void }) {
+  const estado = s.properties.find((p) => p.name === "estado")?.value ?? undefined;
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-line bg-card px-3 py-2 text-[13px] text-mid">
+      <Link to={`/nodes/${s.id}`} className="min-w-0 flex-1 truncate transition hover:text-ink">
+        {s.title}
+      </Link>
+      <span className="flex items-center gap-2 pl-2">
+        {estado && <StateDot estado={estado} />}
+        <button onClick={onEdit} className="rounded p-1 text-dim transition hover:bg-elev hover:text-ink" title="Editar">
+          <Pencil className="h-3.5 w-3.5" strokeWidth={2} />
+        </button>
+        <button
+          onClick={onDelete}
+          className="rounded p-1 text-dim transition hover:bg-elev hover:text-rose-400"
+          title="Borrar"
+        >
+          <Trash2 className="h-3.5 w-3.5" strokeWidth={2} />
+        </button>
+      </span>
+    </div>
+  );
+}
+
+function WorkoutForm({ session, onDone }: { session?: NodeResponse; onDone: () => void }) {
+  const { t } = useI18n();
+  const create = useCreateWorkout();
+  const update = useUpdateWorkout();
+  const prop = (n: string) => session?.properties.find((p) => p.name === n)?.value ?? "";
+  const today = new Date().toISOString().slice(0, 10);
+  const [fecha, setFecha] = useState(prop("fecha") || today);
+  const [tipo, setTipo] = useState(prop("tipo") || "Descanso");
+  const [objetivo, setObjetivo] = useState(prop("objetivo") || "");
+  const [estado, setEstado] = useState(prop("estado") || "Pendiente");
+  const pending = create.isPending || update.isPending;
+
+  const save = () => {
+    if (session) update.mutate({ id: session.id, body: { fecha, tipo, objetivo, estado } }, { onSuccess: onDone });
+    else create.mutate({ fecha, tipo, objetivo }, { onSuccess: onDone });
+  };
+
+  const field = "rounded-md border border-line bg-app px-2 py-1.5 text-[13px] text-ink outline-none focus:border-accent/50";
+
+  return (
+    <div className="mb-1 space-y-2 rounded-lg border border-accent/40 bg-card p-3">
+      <div className="flex flex-wrap gap-2">
+        <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={field} />
+        <select value={tipo} onChange={(e) => setTipo(e.target.value)} className={field}>
+          {TIPOS.map((x) => (
+            <option key={x} value={x}>
+              {x}
+            </option>
+          ))}
+        </select>
+        {session && (
+          <select value={estado} onChange={(e) => setEstado(e.target.value)} className={field}>
+            {ESTADOS.map((x) => (
+              <option key={x} value={x}>
+                {x}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+      <input
+        value={objetivo}
+        onChange={(e) => setObjetivo(e.target.value)}
+        placeholder={t("salud.objective")}
+        className={`w-full ${field}`}
+      />
+      <div className="flex gap-2">
+        <button
+          onClick={save}
+          disabled={pending}
+          className="rounded-lg bg-accent px-3 py-1.5 text-[13px] font-medium text-white transition hover:opacity-90 disabled:opacity-50"
+        >
+          {t("salud.save")}
+        </button>
+        <button
+          onClick={onDone}
+          className="rounded-lg border border-line px-3 py-1.5 text-[13px] font-medium text-mid transition hover:bg-elev"
+        >
+          {t("salud.cancel")}
+        </button>
+      </div>
     </div>
   );
 }

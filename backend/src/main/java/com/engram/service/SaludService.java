@@ -16,6 +16,7 @@ import com.engram.web.dto.SchemaField;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.TextStyle;
+import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -397,6 +398,70 @@ public class SaludService {
         return nodeService.upsertProperty(sessionId, new PropertyDto(S_ESTADO, PropertyType.SELECT, EST_SALTADO));
     }
 
+    /** Create a custom training session on a date (managed from the panel). */
+    @Transactional
+    public NodeResponse createSession(String fecha, String tipo, String objetivo) {
+        Node root = getOrCreateRoot();
+        Node sesiones = childByTitle(root, SESIONES).orElseThrow(() -> new IllegalStateException("Área Salud no inicializada"));
+        UUID planId = childByTitle(root, PLAN).map(Node::getId).orElse(null);
+        LocalDate date = parseDate(fecha, LocalDate.now());
+        String t = tipo == null || tipo.isBlank() ? "Descanso" : tipo;
+        String obj = objetivo == null ? "" : objetivo;
+        String content = "<h2>" + escapeHtml(t) + "</h2>" + (obj.isBlank() ? "" : "<p>" + escapeHtml(obj) + "</p>");
+        return createSession(sesiones, weekOf(date, planId), date, t, content, obj);
+    }
+
+    /** Edit an existing session (any of tipo/objetivo/fecha/estado). */
+    @Transactional
+    public NodeResponse updateSession(UUID id, String fecha, String tipo, String objetivo, String estado) {
+        Node session = requireNode(id);
+        if (tipo != null && !tipo.isBlank()) {
+            nodeService.upsertProperty(id, new PropertyDto(S_TIPO, PropertyType.SELECT, tipo));
+        }
+        if (objetivo != null) {
+            nodeService.upsertProperty(id, new PropertyDto(S_OBJETIVO, PropertyType.TEXT, objetivo));
+        }
+        if (estado != null && !estado.isBlank()) {
+            nodeService.upsertProperty(id, new PropertyDto(S_ESTADO, PropertyType.SELECT, estado));
+        }
+        if (fecha != null && !fecha.isBlank()) {
+            UUID planId = findRoot().flatMap(r -> childByTitle(r, PLAN)).map(Node::getId).orElse(null);
+            LocalDate date = parseDate(fecha, LocalDate.now());
+            nodeService.upsertProperty(id, new PropertyDto(S_FECHA, PropertyType.DATE, date.toString()));
+            nodeService.upsertProperty(id, new PropertyDto(S_SEMANA, PropertyType.NUMBER, String.valueOf(weekOf(date, planId))));
+        }
+        // Retitle to match the (possibly new) date + tipo.
+        String curFecha = prop(id, S_FECHA);
+        String curTipo = prop(id, S_TIPO);
+        if (curFecha != null && curTipo != null) {
+            session.setTitle(sessionTitle(parseDate(curFecha, LocalDate.now()), curTipo));
+            nodeRepository.saveAndFlush(session);
+        }
+        return nodeService.get(id);
+    }
+
+    /** Delete a session (to trash). */
+    @Transactional
+    public void deleteSession(UUID id) {
+        requireNode(id);
+        nodeService.delete(id);
+    }
+
+    /** The plan week a date falls in (1-based; clamped to >= 1). */
+    private int weekOf(LocalDate date, UUID planId) {
+        LocalDate start = planId != null ? planStart(planId) : date;
+        long days = ChronoUnit.DAYS.between(start, date);
+        return (int) Math.max(1, days / 7 + 1);
+    }
+
+    private LocalDate parseDate(String s, LocalDate fallback) {
+        try {
+            return s == null || s.isBlank() ? fallback : LocalDate.parse(s);
+        } catch (Exception e) {
+            return fallback;
+        }
+    }
+
     /**
      * Regenerate every still-pending week from the current week onward, using the
      * latest topes and the running schedule. Completed/skipped sessions are kept.
@@ -474,16 +539,20 @@ public class SaludService {
                 "Descanso activo");
     }
 
-    private void createSession(Node sesiones, int week, LocalDate date, String tipo, String content, String objetivo) {
-        String dow = capitalize(date.getDayOfWeek().getDisplayName(TextStyle.SHORT, new Locale("es")));
-        String title = dow + " " + String.format("%02d/%02d", date.getDayOfMonth(), date.getMonthValue()) + " · " + tipo;
-        NodeResponse s = nodeService.create(new CreateNodeRequest(title, content, null, PageLayout.DOCUMENT,
-                sesiones.getId(), List.of(SESSION_TAG)));
+    private NodeResponse createSession(Node sesiones, int week, LocalDate date, String tipo, String content, String objetivo) {
+        NodeResponse s = nodeService.create(new CreateNodeRequest(sessionTitle(date, tipo), content, null,
+                PageLayout.DOCUMENT, sesiones.getId(), List.of(SESSION_TAG)));
         nodeService.upsertProperty(s.id(), new PropertyDto(S_FECHA, PropertyType.DATE, date.toString()));
         nodeService.upsertProperty(s.id(), new PropertyDto(S_SEMANA, PropertyType.NUMBER, String.valueOf(week)));
         nodeService.upsertProperty(s.id(), new PropertyDto(S_TIPO, PropertyType.SELECT, tipo));
         nodeService.upsertProperty(s.id(), new PropertyDto(S_ESTADO, PropertyType.SELECT, EST_PENDIENTE));
         nodeService.upsertProperty(s.id(), new PropertyDto(S_OBJETIVO, PropertyType.TEXT, objetivo));
+        return nodeService.get(s.id());
+    }
+
+    private String sessionTitle(LocalDate date, String tipo) {
+        String dow = capitalize(date.getDayOfWeek().getDisplayName(TextStyle.SHORT, new Locale("es")));
+        return dow + " " + String.format("%02d/%02d", date.getDayOfMonth(), date.getMonthValue()) + " · " + tipo;
     }
 
     private String strengthContent(String heading, List<String> exercises, Node ejercicios, String sets, boolean deload) {
@@ -742,6 +811,10 @@ public class SaludService {
 
     private static String orEmpty(String s) {
         return s == null ? "" : s;
+    }
+
+    private static String escapeHtml(String s) {
+        return s == null ? "" : s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
     private static String toPlainText(String html) {

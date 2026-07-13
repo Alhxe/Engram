@@ -339,6 +339,11 @@ export const api = {
       }),
     aiRecipe: (dish: string) =>
       request<NodeResponse>("/salud/ai/recipe", { method: "POST", body: JSON.stringify({ dish }) }),
+    createSession: (body: { fecha?: string; tipo?: string; objetivo?: string }) =>
+      request<NodeResponse>("/salud/sessions", { method: "POST", body: JSON.stringify(body) }),
+    updateSession: (id: string, body: { fecha?: string; tipo?: string; objetivo?: string; estado?: string }) =>
+      request<NodeResponse>(`/salud/sessions/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+    deleteSession: (id: string) => request<void>(`/salud/sessions/${id}`, { method: "DELETE" }),
   },
   github: {
     import: (repo: string) =>

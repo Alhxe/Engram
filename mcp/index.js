@@ -472,6 +472,29 @@ tool(server, "salud_generate_recipe",
   { dish: z.string() },
   ({ dish }) => api("/salud/ai/recipe", { method: "POST", body: JSON.stringify({ dish }) }));
 
+tool(server, "salud_add_session",
+  "Add a custom training session. tipo is one of: Calistenia A/B/C, Carrera Z2, Carrera intervalos, "
+  + "Carrera larga, Descanso. fecha YYYY-MM-DD (default today).",
+  { fecha: z.string().optional(), tipo: z.string().optional(), objetivo: z.string().optional() },
+  ({ fecha, tipo, objetivo }) => api("/salud/sessions", { method: "POST", body: JSON.stringify({ fecha, tipo, objetivo }) }));
+
+tool(server, "salud_edit_session",
+  "Edit a training session: any of fecha (YYYY-MM-DD), tipo, objetivo, estado (Pendiente/Hecho/Saltado).",
+  {
+    id: z.string(),
+    fecha: z.string().optional(),
+    tipo: z.string().optional(),
+    objetivo: z.string().optional(),
+    estado: z.string().optional(),
+  },
+  ({ id, fecha, tipo, objetivo, estado }) =>
+    api(`/salud/sessions/${id}`, { method: "PUT", body: JSON.stringify({ fecha, tipo, objetivo, estado }) }));
+
+tool(server, "salud_delete_session",
+  "Delete a training session (moves it to the trash).",
+  { id: z.string() },
+  ({ id }) => api(`/salud/sessions/${id}`, { method: "DELETE" }));
+
 // --- Resources --------------------------------------------------------------
 
 server.resource("tags", "engram://tags", async () => {

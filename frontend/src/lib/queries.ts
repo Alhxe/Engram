@@ -377,6 +377,43 @@ export function useGenerateRecipe() {
   });
 }
 
+export function useCreateWorkout() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { fecha?: string; tipo?: string; objetivo?: string }) => api.salud.createSession(body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["salud"] });
+      qc.invalidateQueries({ queryKey: ["children"] });
+      qc.invalidateQueries({ queryKey: ["nodes"] });
+    },
+  });
+}
+
+export function useUpdateWorkout() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: { fecha?: string; tipo?: string; objetivo?: string; estado?: string } }) =>
+      api.salud.updateSession(id, body),
+    onSuccess: (_res, { id }) => {
+      qc.invalidateQueries({ queryKey: ["salud"] });
+      qc.invalidateQueries({ queryKey: ["node", id] });
+      qc.invalidateQueries({ queryKey: ["children"] });
+    },
+  });
+}
+
+export function useDeleteWorkout() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.salud.deleteSession(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["salud"] });
+      qc.invalidateQueries({ queryKey: ["children"] });
+      qc.invalidateQueries({ queryKey: ["nodes"] });
+    },
+  });
+}
+
 export function useSrsGrade() {
   const qc = useQueryClient();
   return useMutation({
