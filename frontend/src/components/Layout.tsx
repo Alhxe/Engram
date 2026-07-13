@@ -14,6 +14,7 @@ import CommandPalette from "./CommandPalette";
 import GithubImportDialog from "./GithubImportDialog";
 import QuestionDialog from "./QuestionDialog";
 import AcademiaNav from "./AcademiaNav";
+import SaludNav from "./SaludNav";
 
 function NavItem({ to, icon: Icon, label }: { to: string; icon: typeof Home; label: string }) {
   return (
@@ -226,6 +227,7 @@ export default function Layout() {
             <PageTree />
           </div>
           <AcademiaNav />
+          <SaludNav />
         </div>
 
         <div className="flex items-center gap-2.5 border-t border-line px-3 py-2.5">

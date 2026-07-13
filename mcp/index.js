@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
+import { randomUUID } from "node:crypto";
+import express from "express";
 import { z } from "zod";
 
 // --- Configuration ----------------------------------------------------------
@@ -113,13 +117,16 @@ ACADEMIA (study area)
 - To help a student: create_subject, then per tema create_page notes + generate_flashcards; you can
   also quiz them by calling review_due(scopeId) and grade_card on their answers.`;
 
-const server = new McpServer({ name: "engram", version: "0.4.0" }, { instructions: INSTRUCTIONS });
-
 const LAYOUT = z.enum(["DOCUMENT", "MINDMAP", "TABLE", "BOARD", "CALENDAR", "CHART"]);
 const PROPERTY_TYPE = z.enum([
   "TEXT", "NUMBER", "DATE", "SELECT", "CHECKBOX",
   "URL", "EMAIL", "MULTISELECT", "RATING", "RELATION",
 ]);
+
+// Build a fully-wired MCP server. Called once for stdio, and once per HTTP
+// session (each Streamable-HTTP session needs its own server+transport pair).
+function buildServer() {
+  const server = new McpServer({ name: "engram", version: "0.4.0" }, { instructions: INSTRUCTIONS });
 
 // --- Read tools -------------------------------------------------------------
 
@@ -372,6 +379,68 @@ tool(server, "grade_card",
   { id: z.string(), grade: z.enum(["AGAIN", "HARD", "GOOD", "EASY"]) },
   ({ id, grade }) => api(`/srs/${id}/grade?grade=${grade}`, { method: "POST" }));
 
+// --- Salud (fitness/nutrition area) -----------------------------------------
+
+tool(server, "salud_create_area",
+  "Create (idempotently) the Salud area: plan config, Ejercicios (strength topes), Sesiones and Peso. "
+  + "Returns the plan status.",
+  {},
+  () => api("/salud/area", { method: "POST" }));
+
+tool(server, "salud_status",
+  "Health plan summary: current week, adherence (done/skipped/pending), latest weight and a "
+  + "diet recommendation derived from the weigh-in trend.",
+  {},
+  () => api("/salud/status"));
+
+tool(server, "salud_today",
+  "Today's training session(s).",
+  {},
+  () => api("/salud/today"));
+
+tool(server, "salud_week",
+  "All sessions of a given plan week (1-based).",
+  { number: z.number().int() },
+  ({ number }) => api(`/salud/week/${number}`));
+
+tool(server, "salud_topes",
+  "The strength-progression records (one per movement) with their level and target reps. "
+  + "Use these ids to log reps in salud_complete.",
+  {},
+  () => api("/salud/topes"));
+
+tool(server, "salud_complete",
+  "Mark a training session done and progress the involved exercises. For calisthenics days pass "
+  + "exercises = [{ topeId, reps }] (reps on your hardest set); for runs pass durationMin. Optional rpe (1-5), notes.",
+  {
+    id: z.string().describe("Session page id"),
+    durationMin: z.number().int().optional(),
+    rpe: z.number().int().min(1).max(5).optional(),
+    notes: z.string().optional(),
+    exercises: z.array(z.object({ topeId: z.string(), reps: z.number().int() })).optional(),
+  },
+  ({ id, durationMin, rpe, notes, exercises }) =>
+    api(`/salud/sessions/${id}/complete`, {
+      method: "POST",
+      body: JSON.stringify({ durationMin, rpe, notes, exercises }),
+    }));
+
+tool(server, "salud_skip",
+  "Mark a training session skipped (its exercises do not progress).",
+  { id: z.string() },
+  ({ id }) => api(`/salud/sessions/${id}/skip`, { method: "POST" }));
+
+tool(server, "salud_recalculate",
+  "Regenerate the pending weeks of the plan from the latest topes and running schedule "
+  + "(keeps done/skipped history). Returns the fresh status.",
+  {},
+  () => api("/salud/recalculate", { method: "POST" }));
+
+tool(server, "salud_advance_week",
+  "Advance the plan to the next week (generating it if needed).",
+  {},
+  () => api("/salud/advance-week", { method: "POST" }));
+
 // --- Resources --------------------------------------------------------------
 
 server.resource("tags", "engram://tags", async () => {
@@ -379,8 +448,97 @@ server.resource("tags", "engram://tags", async () => {
   return { contents: [{ uri: "engram://tags", mimeType: "application/json", text: JSON.stringify(tags) }] };
 });
 
-// --- Run --------------------------------------------------------------------
+  return server;
+}
 
-const transport = new StdioServerTransport();
-await server.connect(transport);
-console.error(`engram-mcp connected to ${BASE_URL}`);
+// --- Run --------------------------------------------------------------------
+// Two transports share the same tool set:
+//   - stdio (default): local Claude Desktop / Claude Code, one process per client.
+//   - Streamable HTTP (MCP_TRANSPORT=http): remote connector reachable through the
+//     Cloudflare Tunnel, so claude.ai / the mobile app can use Engram.
+
+async function runStdio() {
+  const server = buildServer();
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  console.error(`engram-mcp (stdio) connected to ${BASE_URL}`);
+}
+
+async function runHttp() {
+  const PORT = Number(process.env.MCP_HTTP_PORT ?? 8787);
+  const PATH = process.env.MCP_HTTP_PATH ?? "/mcp";
+  const TOKEN = process.env.MCP_HTTP_TOKEN; // optional shared secret
+
+  const app = express();
+  app.use(express.json({ limit: "4mb" }));
+
+  // Optional bearer guard. When set, every MCP request must send
+  // `Authorization: Bearer <MCP_HTTP_TOKEN>`. Leave unset only if the tunnel
+  // already gates access (e.g. a secret path or Cloudflare Access).
+  if (TOKEN) {
+    app.use(PATH, (req, res, next) => {
+      if (req.headers.authorization !== `Bearer ${TOKEN}`) {
+        res.status(401).json({
+          jsonrpc: "2.0",
+          error: { code: -32001, message: "Unauthorized" },
+          id: null,
+        });
+        return;
+      }
+      next();
+    });
+  }
+
+  // One transport per MCP session, keyed by the Mcp-Session-Id header.
+  const transports = {};
+
+  app.post(PATH, async (req, res) => {
+    const sessionId = req.headers["mcp-session-id"];
+    let transport = sessionId ? transports[sessionId] : undefined;
+
+    if (!transport && isInitializeRequest(req.body)) {
+      transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: () => randomUUID(),
+        onsessioninitialized: (sid) => { transports[sid] = transport; },
+      });
+      transport.onclose = () => {
+        if (transport.sessionId) delete transports[transport.sessionId];
+      };
+      const server = buildServer();
+      await server.connect(transport);
+    } else if (!transport) {
+      res.status(400).json({
+        jsonrpc: "2.0",
+        error: { code: -32000, message: "No valid session; send an initialize request first." },
+        id: null,
+      });
+      return;
+    }
+
+    await transport.handleRequest(req, res, req.body);
+  });
+
+  // GET (server->client SSE stream) and DELETE (session teardown) reuse the session.
+  const bySession = async (req, res) => {
+    const sessionId = req.headers["mcp-session-id"];
+    const transport = sessionId ? transports[sessionId] : undefined;
+    if (!transport) {
+      res.status(400).send("Invalid or missing session ID");
+      return;
+    }
+    await transport.handleRequest(req, res);
+  };
+  app.get(PATH, bySession);
+  app.delete(PATH, bySession);
+
+  app.listen(PORT, () => {
+    console.error(`engram-mcp (http) listening on :${PORT}${PATH} -> ${BASE_URL}`);
+    if (!TOKEN) console.error("WARNING: MCP_HTTP_TOKEN unset — endpoint is unauthenticated.");
+  });
+}
+
+if ((process.env.MCP_TRANSPORT ?? "stdio").toLowerCase() === "http") {
+  await runHttp();
+} else {
+  await runStdio();
+}

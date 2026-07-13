@@ -17,6 +17,7 @@ import SettingsPage from "./pages/SettingsPage";
 import PublicPage from "./pages/PublicPage";
 import GardenPage from "./pages/GardenPage";
 import GuidePage from "./pages/GuidePage";
+import SaludPage from "./pages/SaludPage";
 
 // Heavy, rarely-first pages (React Flow) load on demand to keep the initial bundle lean.
 const GraphPage = lazy(() => import("./pages/GraphPage"));
@@ -35,6 +36,7 @@ function AppRoutes() {
             <Route path="search" element={<SearchPage />} />
             <Route path="ask" element={<AskPage />} />
             <Route path="review" element={<ReviewPage />} />
+            <Route path="salud" element={<SaludPage />} />
             <Route path="exam" element={<ExamPage />} />
             <Route path="timeline" element={<TimelinePage />} />
             <Route path="inbox" element={<InboxPage />} />

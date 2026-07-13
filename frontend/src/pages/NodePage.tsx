@@ -28,6 +28,7 @@ import TableOfContents from "@/components/TableOfContents";
 import PathProgress from "@/components/PathProgress";
 import FlashcardGenerator from "@/components/FlashcardGenerator";
 import FlashcardView from "@/components/FlashcardView";
+import SessionView from "@/components/SessionView";
 import Backlinks from "@/components/Backlinks";
 import LinkSuggestions from "@/components/LinkSuggestions";
 import PropertyBacklinks from "@/components/PropertyBacklinks";
@@ -257,6 +258,8 @@ export default function NodePage() {
         </div>
 
         {tags.includes("ruta") && <PathProgress nodeId={node.id} />}
+
+        {tags.includes("entreno") && <SessionView node={node} />}
 
         {isDoc && (
           <AiAutoSuggest

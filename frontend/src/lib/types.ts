@@ -104,6 +104,26 @@ export interface SubjectReview {
   total: number;
 }
 
+export interface SaludStatus {
+  exists: boolean;
+  semanaActual: number;
+  semanasTotal: number;
+  pesoInicial: number | null;
+  pesoObjetivo: number | null;
+  pesoActual: number | null;
+  sesionesHechas: number;
+  sesionesSaltadas: number;
+  sesionesPendientes: number;
+  recomendacion: string | null;
+}
+
+export interface CompleteSessionBody {
+  durationMin?: number;
+  rpe?: number;
+  notes?: string;
+  exercises?: { topeId: string; reps: number }[];
+}
+
 export interface PageRef {
   id: string;
   title: string;

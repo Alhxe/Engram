@@ -306,6 +306,19 @@ export const api = {
     createSubject: (name: string) =>
       request<NodeResponse>(`/academia/subjects?name=${encodeURIComponent(name)}`, { method: "POST" }),
   },
+  salud: {
+    status: () => request<import("./types").SaludStatus>("/salud/status"),
+    exists: () => request<{ exists: boolean }>("/salud/exists"),
+    createArea: () => request<import("./types").SaludStatus>("/salud/area", { method: "POST" }),
+    today: () => request<NodeResponse[]>("/salud/today"),
+    week: (n: number) => request<NodeResponse[]>(`/salud/week/${n}`),
+    topes: () => request<NodeResponse[]>("/salud/topes"),
+    complete: (id: string, body: import("./types").CompleteSessionBody) =>
+      request<NodeResponse>(`/salud/sessions/${id}/complete`, { method: "POST", body: JSON.stringify(body) }),
+    skip: (id: string) => request<NodeResponse>(`/salud/sessions/${id}/skip`, { method: "POST" }),
+    recalculate: () => request<import("./types").SaludStatus>("/salud/recalculate", { method: "POST" }),
+    advanceWeek: () => request<import("./types").SaludStatus>("/salud/advance-week", { method: "POST" }),
+  },
   github: {
     import: (repo: string) =>
       request<NodeResponse>(`/github/import?repo=${encodeURIComponent(repo)}`, { method: "POST" }),

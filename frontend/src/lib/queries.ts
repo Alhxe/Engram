@@ -238,6 +238,85 @@ export function useCreateSubject() {
   });
 }
 
+export function useSaludStatus() {
+  return useQuery({ queryKey: ["salud", "status"], queryFn: () => api.salud.status() });
+}
+
+export function useSaludExists() {
+  return useQuery({ queryKey: ["salud", "exists"], queryFn: () => api.salud.exists() });
+}
+
+export function useSaludToday() {
+  return useQuery({ queryKey: ["salud", "today"], queryFn: () => api.salud.today() });
+}
+
+export function useSaludWeek(n: number) {
+  return useQuery({ queryKey: ["salud", "week", n], queryFn: () => api.salud.week(n) });
+}
+
+export function useSaludTopes() {
+  return useQuery({ queryKey: ["salud", "topes"], queryFn: () => api.salud.topes() });
+}
+
+export function useCreateSaludArea() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.salud.createArea(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["salud"] });
+      qc.invalidateQueries({ queryKey: ["children"] });
+      qc.invalidateQueries({ queryKey: ["nodes"] });
+    },
+  });
+}
+
+export function useCompleteSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: Parameters<typeof api.salud.complete>[1] }) =>
+      api.salud.complete(id, body),
+    onSuccess: (_res, { id }) => {
+      qc.invalidateQueries({ queryKey: ["node", id] });
+      qc.invalidateQueries({ queryKey: ["salud"] });
+    },
+  });
+}
+
+export function useSkipSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.salud.skip(id),
+    onSuccess: (_res, id) => {
+      qc.invalidateQueries({ queryKey: ["node", id] });
+      qc.invalidateQueries({ queryKey: ["salud"] });
+    },
+  });
+}
+
+export function useRecalculateSalud() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.salud.recalculate(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["salud"] });
+      qc.invalidateQueries({ queryKey: ["children"] });
+      qc.invalidateQueries({ queryKey: ["nodes"] });
+    },
+  });
+}
+
+export function useAdvanceSaludWeek() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.salud.advanceWeek(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["salud"] });
+      qc.invalidateQueries({ queryKey: ["children"] });
+      qc.invalidateQueries({ queryKey: ["nodes"] });
+    },
+  });
+}
+
 export function useSrsGrade() {
   const qc = useQueryClient();
   return useMutation({
