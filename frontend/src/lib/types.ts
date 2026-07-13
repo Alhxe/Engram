@@ -124,6 +124,11 @@ export interface CompleteSessionBody {
   exercises?: { topeId: string; reps: number }[];
 }
 
+export interface MealIdea {
+  nombre: string;
+  descripcion: string;
+}
+
 export interface PageRef {
   id: string;
   title: string;

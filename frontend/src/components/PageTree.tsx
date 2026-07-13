@@ -26,6 +26,8 @@ const TreeContext = createContext<{ openIds: Set<string>; toggle: (id: string) =
 // The Academia study area has its own sidebar section, so its root page (and the
 // subjects nested under it) are hidden from the general Pages tree.
 const isAcademiaRoot = (item: NodeTreeItem) => item.title?.trim().toLowerCase() === "academia";
+// The Salud area likewise has its own sidebar section.
+const isSaludRoot = (item: NodeTreeItem) => item.title?.trim().toLowerCase() === "salud";
 
 function TreeIcon({ item }: { item: NodeTreeItem }) {
   // Older backend payloads may not carry the layout yet — fall back to a document.
@@ -202,5 +204,5 @@ export function Tree({ roots }: { roots: NodeTreeItem[] }) {
 export default function PageTree() {
   const { data: roots } = useNodeChildren(undefined, true);
   // The Academia root lives in its own sidebar section, not the Pages tree.
-  return <Tree roots={(roots ?? []).filter((item) => !isAcademiaRoot(item))} />;
+  return <Tree roots={(roots ?? []).filter((item) => !isAcademiaRoot(item) && !isSaludRoot(item))} />;
 }

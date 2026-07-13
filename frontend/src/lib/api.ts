@@ -318,6 +318,24 @@ export const api = {
     skip: (id: string) => request<NodeResponse>(`/salud/sessions/${id}/skip`, { method: "POST" }),
     recalculate: () => request<import("./types").SaludStatus>("/salud/recalculate", { method: "POST" }),
     advanceWeek: () => request<import("./types").SaludStatus>("/salud/advance-week", { method: "POST" }),
+    tree: () => request<NodeTreeItem[]>("/salud/tree"),
+    setWeek: (week: number) =>
+      request<import("./types").SaludStatus>(`/salud/set-week?week=${week}`, { method: "POST" }),
+    weighIn: (peso: number, fecha?: string) =>
+      request<import("./types").SaludStatus>(
+        `/salud/weigh-in?peso=${peso}${fecha ? `&fecha=${fecha}` : ""}`,
+        { method: "POST" },
+      ),
+    menuToday: () => request<NodeResponse | null>("/salud/menu/today"),
+    aiMenu: (date?: string) =>
+      request<NodeResponse>("/salud/ai/menu", { method: "POST", body: JSON.stringify({ date }) }),
+    aiDishes: (meal: string, note?: string) =>
+      request<import("./types").MealIdea[]>("/salud/ai/dishes", {
+        method: "POST",
+        body: JSON.stringify({ meal, note }),
+      }),
+    aiRecipe: (dish: string) =>
+      request<NodeResponse>("/salud/ai/recipe", { method: "POST", body: JSON.stringify({ dish }) }),
   },
   github: {
     import: (repo: string) =>

@@ -9,6 +9,7 @@ import com.engram.web.dto.CompleteSessionRequest;
 import com.engram.web.dto.CreateNodeRequest;
 import com.engram.web.dto.ExerciseResultDto;
 import com.engram.web.dto.NodeResponse;
+import com.engram.web.dto.NodeTreeItem;
 import com.engram.web.dto.PropertyDto;
 import com.engram.web.dto.SaludStatusResponse;
 import com.engram.web.dto.SchemaField;
@@ -51,6 +52,10 @@ public class SaludService {
     static final String EJERCICIOS = "Ejercicios";
     static final String SESIONES = "Sesiones";
     static final String PESO = "Peso";
+    static final String COMIDAS = "Comidas";
+    static final String RECETAS = "Recetas";
+    static final String DIET_DAY_TAG = "dieta-dia";
+    static final String RECIPE_TAG = "receta";
 
     // Plan config properties.
     static final String P_PESO_INI = "peso_inicial";
@@ -179,10 +184,123 @@ public class SaludService {
             return created;
         });
 
+        childByTitle(root, COMIDAS).orElseGet(() -> {
+            Node created = requireNode(nodeService.create(new CreateNodeRequest(COMIDAS,
+                    "<p>Menú por día, generado con IA respetando tus preferencias. Pide uno nuevo desde el panel.</p>",
+                    null, PageLayout.CALENDAR, root.getId(), List.of(AREA_TAG))).id());
+            nodeService.setSchema(created.getId(), List.of(
+                    new SchemaField(S_FECHA, PropertyType.DATE, null),
+                    new SchemaField("kcal", PropertyType.NUMBER, null)));
+            return created;
+        });
+
+        childByTitle(root, RECETAS).orElseGet(() -> requireNode(nodeService.create(new CreateNodeRequest(RECETAS,
+                "<p>Recetas guardadas (generadas con IA o a mano). Todas respetan tus preferencias.</p>",
+                null, PageLayout.DOCUMENT, root.getId(), List.of(AREA_TAG))).id()));
+
         if (nodeRepository.findByParentIdAndDeletedAtIsNullOrderByTitleAsc(sesiones.getId()).isEmpty()) {
             generateWeek(1, ejercicios, sesiones, planStart(plan.getId()));
         }
         return status();
+    }
+
+    /** The Salud sub-pages, for the sidebar section's tree. */
+    @Transactional(readOnly = true)
+    public List<NodeTreeItem> tree() {
+        return findRoot().map(r -> nodeService.children(r.getId())).orElseGet(List::of);
+    }
+
+    /** The plain text of the "Preferencias de comida" page (constraints for AI). */
+    @Transactional(readOnly = true)
+    public String preferencesText() {
+        return nodeRepository.findByTitleIgnoreCaseAndDeletedAtIsNull("Preferencias de comida").stream()
+                .findFirst()
+                .map(n -> toPlainText(n.getContent()))
+                .orElse("Sin preferencias registradas todavía.");
+    }
+
+    /** Today's generated menu, or null if none yet. */
+    @Transactional(readOnly = true)
+    public NodeResponse todayMenu() {
+        return menuForDate(LocalDate.now().toString());
+    }
+
+    /** The generated menu for a date, or null. */
+    @Transactional(readOnly = true)
+    public NodeResponse menuForDate(String date) {
+        return findRoot().flatMap(r -> childByTitle(r, COMIDAS))
+                .flatMap(c -> nodeRepository.findByParentIdAndDeletedAtIsNullOrderByTitleAsc(c.getId()).stream()
+                        .filter(n -> date.equals(prop(n.getId(), S_FECHA)))
+                        .findFirst())
+                .map(n -> nodeService.get(n.getId()))
+                .orElse(null);
+    }
+
+    /** Jump the plan to a specific week (1..total), generating it if missing. */
+    @Transactional
+    public SaludStatusResponse setWeek(int n) {
+        Node root = getOrCreateRoot();
+        UUID planId = childByTitle(root, PLAN).orElseThrow(() -> new IllegalStateException("Área Salud no inicializada")).getId();
+        int total = (int) number(planId, P_SEMANAS_TOTAL, 7);
+        int wk = Math.max(1, Math.min(total, n));
+        nodeService.upsertProperty(planId, new PropertyDto(P_SEMANA, PropertyType.NUMBER, String.valueOf(wk)));
+        if (sessionsOfWeek(wk).isEmpty()) {
+            Node ejercicios = childByTitle(root, EJERCICIOS).orElseThrow();
+            Node sesiones = childByTitle(root, SESIONES).orElseThrow();
+            generateWeek(wk, ejercicios, sesiones, planStart(planId));
+        }
+        return status();
+    }
+
+    /** Record a weigh-in (replacing any existing one for the same date). */
+    @Transactional
+    public SaludStatusResponse weighIn(double peso, String fecha) {
+        Node root = getOrCreateRoot();
+        Node pesoNode = childByTitle(root, PESO).orElseThrow(() -> new IllegalStateException("Área Salud no inicializada"));
+        String f = fecha == null || fecha.isBlank() ? LocalDate.now().toString() : fecha;
+        for (Node c : nodeRepository.findByParentIdAndDeletedAtIsNullOrderByTitleAsc(pesoNode.getId())) {
+            if (f.equals(prop(c.getId(), S_FECHA))) {
+                nodeService.delete(c.getId());
+            }
+        }
+        NodeResponse w = nodeService.create(new CreateNodeRequest("Pesaje " + f,
+                "<p>" + peso + " kg</p>", null, PageLayout.DOCUMENT, pesoNode.getId(), List.of(AREA_TAG)));
+        nodeService.upsertProperty(w.id(), new PropertyDto(S_FECHA, PropertyType.DATE, f));
+        nodeService.upsertProperty(w.id(), new PropertyDto("peso", PropertyType.NUMBER, String.valueOf(peso)));
+        return status();
+    }
+
+    /** Create a recipe page under Recetas (used by the AI service). */
+    @Transactional
+    public NodeResponse createRecipePage(String title, String contentHtml) {
+        Node root = getOrCreateRoot();
+        Node recetas = childByTitle(root, RECETAS).orElseGet(() -> requireNode(nodeService.create(new CreateNodeRequest(
+                RECETAS, "<p>Recetas.</p>", null, PageLayout.DOCUMENT, root.getId(), List.of(AREA_TAG))).id()));
+        return nodeService.create(new CreateNodeRequest(title, contentHtml, null, PageLayout.DOCUMENT,
+                recetas.getId(), List.of(RECIPE_TAG)));
+    }
+
+    /** Save a day's menu under Comidas (replacing any existing one for that date). */
+    @Transactional
+    public NodeResponse saveDayMenu(String date, String title, String contentHtml) {
+        Node root = getOrCreateRoot();
+        Node comidas = childByTitle(root, COMIDAS).orElseGet(() -> {
+            Node created = requireNode(nodeService.create(new CreateNodeRequest(COMIDAS,
+                    "<p>Menú por día.</p>", null, PageLayout.CALENDAR, root.getId(), List.of(AREA_TAG))).id());
+            nodeService.setSchema(created.getId(), List.of(
+                    new SchemaField(S_FECHA, PropertyType.DATE, null),
+                    new SchemaField("kcal", PropertyType.NUMBER, null)));
+            return created;
+        });
+        for (Node c : nodeRepository.findByParentIdAndDeletedAtIsNullOrderByTitleAsc(comidas.getId())) {
+            if (date.equals(prop(c.getId(), S_FECHA))) {
+                nodeService.delete(c.getId());
+            }
+        }
+        NodeResponse menu = nodeService.create(new CreateNodeRequest(title, contentHtml, null, PageLayout.DOCUMENT,
+                comidas.getId(), List.of(DIET_DAY_TAG)));
+        nodeService.upsertProperty(menu.id(), new PropertyDto(S_FECHA, PropertyType.DATE, date));
+        return nodeService.get(menu.id());
     }
 
     // --- Reads ---------------------------------------------------------------
@@ -624,6 +742,21 @@ public class SaludService {
 
     private static String orEmpty(String s) {
         return s == null ? "" : s;
+    }
+
+    private static String toPlainText(String html) {
+        if (html == null) {
+            return "";
+        }
+        return html
+                .replaceAll("(?is)<(script|style)[^>]*>.*?</\\1>", " ")
+                .replaceAll("<[^>]+>", " ")
+                .replace("&nbsp;", " ")
+                .replace("&amp;", "&")
+                .replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .replaceAll("\\s+", " ")
+                .trim();
     }
 
     private static String capitalize(String s) {

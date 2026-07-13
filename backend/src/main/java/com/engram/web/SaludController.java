@@ -1,8 +1,15 @@
 package com.engram.web;
 
+import com.engram.security.SecurityUtils;
+import com.engram.service.SaludAiService;
 import com.engram.service.SaludService;
 import com.engram.web.dto.CompleteSessionRequest;
+import com.engram.web.dto.DishesRequest;
+import com.engram.web.dto.MealIdea;
+import com.engram.web.dto.MenuRequest;
 import com.engram.web.dto.NodeResponse;
+import com.engram.web.dto.NodeTreeItem;
+import com.engram.web.dto.RecipeRequest;
 import com.engram.web.dto.SaludStatusResponse;
 import java.util.List;
 import java.util.Map;
@@ -12,6 +19,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /** The Salud fitness area: scaffold, read status/sessions, log sessions and
@@ -21,9 +29,17 @@ import org.springframework.web.bind.annotation.RestController;
 public class SaludController {
 
     private final SaludService saludService;
+    private final SaludAiService saludAiService;
 
-    public SaludController(SaludService saludService) {
+    public SaludController(SaludService saludService, SaludAiService saludAiService) {
         this.saludService = saludService;
+        this.saludAiService = saludAiService;
+    }
+
+    /** The Salud sub-pages (for the sidebar section). */
+    @GetMapping("/tree")
+    public List<NodeTreeItem> tree() {
+        return saludService.tree();
     }
 
     /** Create (idempotently) the Salud area and return its status. */
@@ -84,5 +100,43 @@ public class SaludController {
     @PostMapping("/advance-week")
     public SaludStatusResponse advanceWeek() {
         return saludService.advanceWeek();
+    }
+
+    /** Jump to a specific plan week (forwards or backwards). */
+    @PostMapping("/set-week")
+    public SaludStatusResponse setWeek(@RequestParam int week) {
+        return saludService.setWeek(week);
+    }
+
+    /** Record a weigh-in (kg), replacing any for the same date. */
+    @PostMapping("/weigh-in")
+    public SaludStatusResponse weighIn(@RequestParam double peso, @RequestParam(required = false) String fecha) {
+        return saludService.weighIn(peso, fecha);
+    }
+
+    /** Today's generated menu (or null). */
+    @GetMapping("/menu/today")
+    public NodeResponse todayMenu() {
+        return saludService.todayMenu();
+    }
+
+    // --- AI (constrained by the food preferences) ---------------------------
+
+    /** Generate a one-day menu with AI and save it under Comidas. */
+    @PostMapping("/ai/menu")
+    public NodeResponse generateMenu(@RequestBody(required = false) MenuRequest body) {
+        return saludAiService.generateMenu(SecurityUtils.requireUserId(), body == null ? null : body.date());
+    }
+
+    /** Ask the AI for dish ideas for a meal (respecting preferences). */
+    @PostMapping("/ai/dishes")
+    public List<MealIdea> dishes(@RequestBody DishesRequest body) {
+        return saludAiService.suggestDishes(SecurityUtils.requireUserId(), body.meal(), body.note());
+    }
+
+    /** Generate a full recipe for a dish and save it under Recetas. */
+    @PostMapping("/ai/recipe")
+    public NodeResponse recipe(@RequestBody RecipeRequest body) {
+        return saludAiService.generateRecipe(SecurityUtils.requireUserId(), body.dish());
     }
 }

@@ -441,6 +441,37 @@ tool(server, "salud_advance_week",
   {},
   () => api("/salud/advance-week", { method: "POST" }));
 
+tool(server, "salud_set_week",
+  "Jump the plan to a specific week (forwards or backwards), generating it if missing.",
+  { week: z.number().int() },
+  ({ week }) => api(`/salud/set-week?week=${week}`, { method: "POST" }));
+
+tool(server, "salud_weigh_in",
+  "Record a weigh-in in kg (replaces any for the same date). Date optional (YYYY-MM-DD, default today).",
+  { peso: z.number(), fecha: z.string().optional() },
+  ({ peso, fecha }) => api(`/salud/weigh-in?peso=${peso}${fecha ? `&fecha=${fecha}` : ""}`, { method: "POST" }));
+
+tool(server, "salud_menu_today",
+  "Today's generated day-menu (or null if none yet).",
+  {},
+  () => api("/salud/menu/today"));
+
+tool(server, "salud_generate_menu",
+  "Generate a one-day menu with AI (respecting the food preferences) and save it under Comidas. "
+  + "Date optional (YYYY-MM-DD, default today).",
+  { date: z.string().optional() },
+  ({ date }) => api("/salud/ai/menu", { method: "POST", body: JSON.stringify({ date }) }));
+
+tool(server, "salud_suggest_dishes",
+  "Ask the AI for dish ideas for a meal (e.g. 'cena'), respecting the food preferences. Optional note.",
+  { meal: z.string(), note: z.string().optional() },
+  ({ meal, note }) => api("/salud/ai/dishes", { method: "POST", body: JSON.stringify({ meal, note }) }));
+
+tool(server, "salud_generate_recipe",
+  "Generate a full recipe for a named dish (respecting preferences) and save it as a page under Recetas.",
+  { dish: z.string() },
+  ({ dish }) => api("/salud/ai/recipe", { method: "POST", body: JSON.stringify({ dish }) }));
+
 // --- Resources --------------------------------------------------------------
 
 server.resource("tags", "engram://tags", async () => {

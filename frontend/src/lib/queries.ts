@@ -317,6 +317,66 @@ export function useAdvanceSaludWeek() {
   });
 }
 
+export function useSaludTree(enabled = true) {
+  return useQuery({ queryKey: ["salud", "tree"], queryFn: () => api.salud.tree(), enabled });
+}
+
+export function useSaludTodayMenu() {
+  return useQuery({ queryKey: ["salud", "menu", "today"], queryFn: () => api.salud.menuToday() });
+}
+
+export function useSetSaludWeek() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (week: number) => api.salud.setWeek(week),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["salud"] });
+      qc.invalidateQueries({ queryKey: ["children"] });
+      qc.invalidateQueries({ queryKey: ["nodes"] });
+    },
+  });
+}
+
+export function useWeighIn() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ peso, fecha }: { peso: number; fecha?: string }) => api.salud.weighIn(peso, fecha),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["salud"] });
+      qc.invalidateQueries({ queryKey: ["children"] });
+    },
+  });
+}
+
+export function useGenerateMenu() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (date?: string) => api.salud.aiMenu(date),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["salud", "menu"] });
+      qc.invalidateQueries({ queryKey: ["salud", "tree"] });
+      qc.invalidateQueries({ queryKey: ["children"] });
+    },
+  });
+}
+
+export function useSuggestDishes() {
+  return useMutation({
+    mutationFn: ({ meal, note }: { meal: string; note?: string }) => api.salud.aiDishes(meal, note),
+  });
+}
+
+export function useGenerateRecipe() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (dish: string) => api.salud.aiRecipe(dish),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["salud", "tree"] });
+      qc.invalidateQueries({ queryKey: ["children"] });
+    },
+  });
+}
+
 export function useSrsGrade() {
   const qc = useQueryClient();
   return useMutation({
