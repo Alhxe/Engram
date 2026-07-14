@@ -143,6 +143,7 @@ export default function Layout() {
           </div>
         </div>
 
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         <div className="px-3 pt-2">
           <form onSubmit={submitSearch} className="relative">
             <Search
@@ -217,7 +218,7 @@ export default function Layout() {
           </div>
         )}
 
-        <div className="mt-5 flex-1 overflow-y-auto pb-2">
+        <div className="mt-5 pb-2">
           <div className="px-4">
             <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-dim">
               {t("nav.pages")}
@@ -228,6 +229,7 @@ export default function Layout() {
           </div>
           <AcademiaNav />
           <SaludNav />
+        </div>
         </div>
 
         <div className="flex items-center gap-2.5 border-t border-line px-3 py-2.5">

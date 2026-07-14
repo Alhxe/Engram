@@ -4,6 +4,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChefHat,
+  Dumbbell,
   Pencil,
   Plus,
   RefreshCw,
@@ -13,8 +14,12 @@ import {
 } from "lucide-react";
 import type { MealIdea, NodeResponse } from "@/lib/types";
 import {
+  useAddFood,
   useCreateWorkout,
+  useDeleteFood,
   useDeleteWorkout,
+  useEstimateKcal,
+  useFoodToday,
   useGenerateMenu,
   useGenerateRecipe,
   useRecalculateSalud,
@@ -28,6 +33,7 @@ import {
   useWeighIn,
 } from "@/lib/queries";
 import { useI18n } from "@/i18n/I18nContext";
+import SessionView from "@/components/SessionView";
 
 /** Salud dashboard: plan status, week navigation, weigh-in, today's session +
  *  menu, and AI dish/recipe requests — all constrained by the food preferences. */
@@ -76,6 +82,8 @@ export default function SaludPage() {
           {status.recomendacion}
         </div>
       )}
+
+      <FoodDiary />
 
       <Section title={t("salud.today")} items={today} empty={t("salud.noSession")} />
 
@@ -144,25 +152,168 @@ function WorkoutManager({ title, items }: { title: string; items?: NodeResponse[
 }
 
 function WorkoutRow({ s, onEdit, onDelete }: { s: NodeResponse; onEdit: () => void; onDelete: () => void }) {
+  const { t } = useI18n();
+  const [logging, setLogging] = useState(false);
   const estado = s.properties.find((p) => p.name === "estado")?.value ?? undefined;
   return (
-    <div className="flex items-center justify-between rounded-lg border border-line bg-card px-3 py-2 text-[13px] text-mid">
-      <Link to={`/nodes/${s.id}`} className="min-w-0 flex-1 truncate transition hover:text-ink">
-        {s.title}
-      </Link>
-      <span className="flex items-center gap-2 pl-2">
-        {estado && <StateDot estado={estado} />}
-        <button onClick={onEdit} className="rounded p-1 text-dim transition hover:bg-elev hover:text-ink" title="Editar">
-          <Pencil className="h-3.5 w-3.5" strokeWidth={2} />
-        </button>
-        <button
-          onClick={onDelete}
-          className="rounded p-1 text-dim transition hover:bg-elev hover:text-rose-400"
-          title="Borrar"
-        >
-          <Trash2 className="h-3.5 w-3.5" strokeWidth={2} />
-        </button>
-      </span>
+    <div>
+      <div className="flex items-center justify-between rounded-lg border border-line bg-card px-3 py-2 text-[13px] text-mid">
+        <Link to={`/nodes/${s.id}`} className="min-w-0 flex-1 truncate transition hover:text-ink">
+          {s.title}
+        </Link>
+        <span className="flex items-center gap-2 pl-2">
+          {estado && <StateDot estado={estado} />}
+          <button
+            onClick={() => setLogging((v) => !v)}
+            className={`rounded p-1 transition hover:bg-elev hover:text-ink ${logging ? "text-accent2" : "text-dim"}`}
+            title={t("salud.log")}
+          >
+            <Dumbbell className="h-3.5 w-3.5" strokeWidth={2} />
+          </button>
+          <button onClick={onEdit} className="rounded p-1 text-dim transition hover:bg-elev hover:text-ink" title={t("salud.edit")}>
+            <Pencil className="h-3.5 w-3.5" strokeWidth={2} />
+          </button>
+          <button
+            onClick={onDelete}
+            className="rounded p-1 text-dim transition hover:bg-elev hover:text-rose-400"
+            title={t("salud.delete")}
+          >
+            <Trash2 className="h-3.5 w-3.5" strokeWidth={2} />
+          </button>
+        </span>
+      </div>
+      {logging && <SessionView node={s} />}
+    </div>
+  );
+}
+
+function FoodDiary() {
+  const { t } = useI18n();
+  const { data } = useFoodToday();
+  const add = useAddFood();
+  const del = useDeleteFood();
+  const estimate = useEstimateKcal();
+  const [nombre, setNombre] = useState("");
+  const [kcal, setKcal] = useState("");
+  const [prot, setProt] = useState("");
+
+  const doEstimate = () => {
+    if (!nombre.trim()) return;
+    estimate.mutate(nombre.trim(), {
+      onSuccess: (r) => {
+        setKcal(String(r.kcal));
+        setProt(String(r.proteina));
+      },
+    });
+  };
+  const submit = () => {
+    if (!nombre.trim()) return;
+    add.mutate(
+      { nombre: nombre.trim(), kcal: kcal ? Number(kcal) : undefined, proteina: prot ? Number(prot) : undefined },
+      {
+        onSuccess: () => {
+          setNombre("");
+          setKcal("");
+          setProt("");
+        },
+      },
+    );
+  };
+
+  const kcalPct = data && data.targetKcal > 0 ? Math.min(100, Math.round((data.totalKcal / data.targetKcal) * 100)) : 0;
+  const protPct =
+    data && data.targetProtein > 0 ? Math.min(100, Math.round((data.totalProtein / data.targetProtein) * 100)) : 0;
+  const over = data ? data.totalKcal > data.targetKcal : false;
+  const field = "rounded-md border border-line bg-app px-2 py-1.5 text-[13px] text-ink outline-none focus:border-accent/50";
+
+  return (
+    <section className="mb-6">
+      <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-dim">{t("salud.foodDiary")}</h2>
+      <div className="rounded-xl border border-line bg-card p-4">
+        {data && (
+          <div className="mb-3 space-y-2">
+            <Bar label={`${data.totalKcal} / ${data.targetKcal} kcal`} pct={kcalPct} danger={over} />
+            <Bar label={`${data.totalProtein} / ${data.targetProtein} g prot`} pct={protPct} />
+          </div>
+        )}
+
+        <div className="mb-3 flex flex-wrap gap-2">
+          <input
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            placeholder={t("salud.foodName")}
+            className={`min-w-[8rem] flex-1 ${field}`}
+          />
+          <button
+            onClick={doEstimate}
+            disabled={estimate.isPending || !nombre.trim()}
+            title={t("salud.estimate")}
+            className="rounded-md border border-line px-2.5 py-1.5 text-[13px] text-mid transition hover:bg-elev disabled:opacity-50"
+          >
+            {estimate.isPending ? "…" : "≈"}
+          </button>
+          <input
+            type="number"
+            value={kcal}
+            onChange={(e) => setKcal(e.target.value)}
+            placeholder="kcal"
+            className={`w-20 text-right ${field}`}
+          />
+          <input
+            type="number"
+            value={prot}
+            onChange={(e) => setProt(e.target.value)}
+            placeholder="prot"
+            className={`w-16 text-right ${field}`}
+          />
+          <button
+            onClick={submit}
+            disabled={add.isPending || !nombre.trim()}
+            className="rounded-lg bg-accent px-3 py-1.5 text-[13px] font-medium text-white transition hover:opacity-90 disabled:opacity-50"
+          >
+            {t("salud.add")}
+          </button>
+        </div>
+
+        {data && data.entries.length > 0 ? (
+          <ul className="space-y-1">
+            {data.entries.map((e) => (
+              <li
+                key={e.id}
+                className="flex items-center justify-between rounded-md border border-line bg-app px-3 py-1.5 text-[13px] text-mid"
+              >
+                <span className="min-w-0 flex-1 truncate">{e.nombre}</span>
+                <span className="flex items-center gap-2 pl-2 text-dim">
+                  <span>{e.kcal} kcal</span>
+                  {e.proteina > 0 && <span>· {e.proteina}g</span>}
+                  <button onClick={() => del.mutate(e.id)} className="rounded p-0.5 transition hover:text-rose-400">
+                    <Trash2 className="h-3.5 w-3.5" strokeWidth={2} />
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-[13px] text-dim">{t("salud.noFood")}</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function Bar({ label, pct, danger }: { label: string; pct: number; danger?: boolean }) {
+  return (
+    <div>
+      <div className="mb-0.5 flex justify-between text-[11px] text-dim">
+        <span>{label}</span>
+        <span>{pct}%</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-elev">
+        <div
+          className={`h-full rounded-full ${danger ? "bg-rose-500" : "bg-accent"}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
     </div>
   );
 }

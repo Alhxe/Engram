@@ -495,6 +495,23 @@ tool(server, "salud_delete_session",
   { id: z.string() },
   ({ id }) => api(`/salud/sessions/${id}`, { method: "DELETE" }));
 
+tool(server, "salud_food_today",
+  "Today's food diary: running kcal/protein vs targets and the logged entries.",
+  {},
+  () => api("/salud/food"));
+
+tool(server, "salud_log_food",
+  "Log a food item eaten (name + optional kcal/protein). fecha YYYY-MM-DD (default today). "
+  + "Returns the updated day totals.",
+  { nombre: z.string(), kcal: z.number().int().optional(), proteina: z.number().int().optional(), fecha: z.string().optional() },
+  ({ nombre, kcal, proteina, fecha }) =>
+    api("/salud/food", { method: "POST", body: JSON.stringify({ nombre, kcal, proteina, fecha }) }));
+
+tool(server, "salud_estimate_kcal",
+  "Estimate kcal + protein for a dish description (does not log it).",
+  { dish: z.string() },
+  ({ dish }) => api("/salud/ai/estimate", { method: "POST", body: JSON.stringify({ dish }) }));
+
 // --- Resources --------------------------------------------------------------
 
 server.resource("tags", "engram://tags", async () => {

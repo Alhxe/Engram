@@ -377,6 +377,37 @@ export function useGenerateRecipe() {
   });
 }
 
+export function useFoodToday() {
+  return useQuery({ queryKey: ["salud", "food", "today"], queryFn: () => api.salud.foodToday() });
+}
+
+export function useAddFood() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { fecha?: string; nombre: string; kcal?: number; proteina?: number }) =>
+      api.salud.addFood(body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["salud", "food"] });
+      qc.invalidateQueries({ queryKey: ["children"] });
+    },
+  });
+}
+
+export function useDeleteFood() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.salud.deleteFood(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["salud", "food"] });
+      qc.invalidateQueries({ queryKey: ["children"] });
+    },
+  });
+}
+
+export function useEstimateKcal() {
+  return useMutation({ mutationFn: (dish: string) => api.salud.aiEstimate(dish) });
+}
+
 export function useCreateWorkout() {
   const qc = useQueryClient();
   return useMutation({

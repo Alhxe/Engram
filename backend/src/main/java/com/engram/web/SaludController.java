@@ -5,6 +5,10 @@ import com.engram.service.SaludAiService;
 import com.engram.service.SaludService;
 import com.engram.web.dto.CompleteSessionRequest;
 import com.engram.web.dto.DishesRequest;
+import com.engram.web.dto.EstimateRequest;
+import com.engram.web.dto.FoodDaySummary;
+import com.engram.web.dto.FoodEntryRequest;
+import com.engram.web.dto.MealEstimate;
 import com.engram.web.dto.MealIdea;
 import com.engram.web.dto.MenuRequest;
 import com.engram.web.dto.NodeResponse;
@@ -159,5 +163,31 @@ public class SaludController {
     @PostMapping("/ai/recipe")
     public NodeResponse recipe(@RequestBody RecipeRequest body) {
         return saludAiService.generateRecipe(SecurityUtils.requireUserId(), body.dish());
+    }
+
+    /** Estimate kcal/protein for a dish description. */
+    @PostMapping("/ai/estimate")
+    public MealEstimate estimate(@RequestBody EstimateRequest body) {
+        return saludAiService.estimate(SecurityUtils.requireUserId(), body.dish());
+    }
+
+    // --- Food diary ----------------------------------------------------------
+
+    /** The food diary for a date (default today). */
+    @GetMapping("/food")
+    public FoodDaySummary food(@RequestParam(required = false) String date) {
+        return saludService.foodDay(date);
+    }
+
+    /** Log a food item; returns the updated day summary. */
+    @PostMapping("/food")
+    public FoodDaySummary addFood(@RequestBody FoodEntryRequest body) {
+        return saludService.addFood(body.fecha(), body.nombre(), body.kcal(), body.proteina());
+    }
+
+    /** Remove a food entry; returns the updated day summary. */
+    @DeleteMapping("/food/{id}")
+    public FoodDaySummary deleteFood(@PathVariable UUID id) {
+        return saludService.deleteFood(id);
     }
 }

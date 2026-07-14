@@ -8,6 +8,8 @@ import com.engram.repository.NodeRepository;
 import com.engram.web.dto.CompleteSessionRequest;
 import com.engram.web.dto.CreateNodeRequest;
 import com.engram.web.dto.ExerciseResultDto;
+import com.engram.web.dto.FoodDaySummary;
+import com.engram.web.dto.FoodEntry;
 import com.engram.web.dto.NodeResponse;
 import com.engram.web.dto.NodeTreeItem;
 import com.engram.web.dto.PropertyDto;
@@ -57,6 +59,13 @@ public class SaludService {
     static final String RECETAS = "Recetas";
     static final String DIET_DAY_TAG = "dieta-dia";
     static final String RECIPE_TAG = "receta";
+    static final String REGISTRO = "Registro comidas";
+    static final String FOOD_TAG = "comida-log";
+    static final String F_NOMBRE = "nombre";
+    static final String F_KCAL = "kcal";
+    static final String F_PROT = "proteina";
+    static final String P_KCAL = "kcal_objetivo";
+    static final String P_PROT = "proteina_objetivo";
 
     // Plan config properties.
     static final String P_PESO_INI = "peso_inicial";
@@ -199,6 +208,8 @@ public class SaludService {
                 "<p>Recetas guardadas (generadas con IA o a mano). Todas respetan tus preferencias.</p>",
                 null, PageLayout.DOCUMENT, root.getId(), List.of(AREA_TAG))).id()));
 
+        registroContainer();
+
         if (nodeRepository.findByParentIdAndDeletedAtIsNullOrderByTitleAsc(sesiones.getId()).isEmpty()) {
             generateWeek(1, ejercicios, sesiones, planStart(plan.getId()));
         }
@@ -279,6 +290,81 @@ public class SaludService {
                 RECETAS, "<p>Recetas.</p>", null, PageLayout.DOCUMENT, root.getId(), List.of(AREA_TAG))).id()));
         return nodeService.create(new CreateNodeRequest(title, contentHtml, null, PageLayout.DOCUMENT,
                 recetas.getId(), List.of(RECIPE_TAG)));
+    }
+
+    // --- Food diary ----------------------------------------------------------
+
+    /** Today's food diary (running kcal/protein vs targets + entries). */
+    @Transactional(readOnly = true)
+    public FoodDaySummary todayFood() {
+        return foodDay(LocalDate.now().toString());
+    }
+
+    /** The food diary for a date. */
+    @Transactional(readOnly = true)
+    public FoodDaySummary foodDay(String date) {
+        String d = date == null || date.isBlank() ? LocalDate.now().toString() : date;
+        UUID planId = findRoot().flatMap(r -> childByTitle(r, PLAN)).map(Node::getId).orElse(null);
+        int targetKcal = planId != null ? (int) number(planId, P_KCAL, 2000) : 2000;
+        int targetProt = planId != null ? (int) number(planId, P_PROT, 150) : 150;
+
+        List<FoodEntry> entries = new java.util.ArrayList<>();
+        int totKcal = 0;
+        int totProt = 0;
+        Optional<Node> reg = findRoot().flatMap(r -> childByTitle(r, REGISTRO));
+        if (reg.isPresent()) {
+            for (Node c : nodeRepository.findByParentIdAndDeletedAtIsNullOrderByTitleAsc(reg.get().getId())) {
+                if (!d.equals(prop(c.getId(), S_FECHA))) {
+                    continue;
+                }
+                int k = (int) number(c.getId(), F_KCAL, 0);
+                int p = (int) number(c.getId(), F_PROT, 0);
+                totKcal += k;
+                totProt += p;
+                String nombre = prop(c.getId(), F_NOMBRE);
+                entries.add(new FoodEntry(c.getId().toString(), nombre == null ? c.getTitle() : nombre, k, p));
+            }
+        }
+        return new FoodDaySummary(d, targetKcal, totKcal, targetProt, totProt, entries);
+    }
+
+    /** Log a food item on a date (default today); returns the updated day summary. */
+    @Transactional
+    public FoodDaySummary addFood(String fecha, String nombre, Integer kcal, Integer proteina) {
+        Node reg = registroContainer();
+        String f = fecha == null || fecha.isBlank() ? LocalDate.now().toString() : fecha;
+        String name = nombre == null || nombre.isBlank() ? "Comida" : nombre.trim();
+        NodeResponse e = nodeService.create(new CreateNodeRequest(name, "", null, PageLayout.DOCUMENT,
+                reg.getId(), List.of(FOOD_TAG)));
+        nodeService.upsertProperty(e.id(), new PropertyDto(S_FECHA, PropertyType.DATE, f));
+        nodeService.upsertProperty(e.id(), new PropertyDto(F_NOMBRE, PropertyType.TEXT, name));
+        nodeService.upsertProperty(e.id(), new PropertyDto(F_KCAL, PropertyType.NUMBER, String.valueOf(kcal == null ? 0 : kcal)));
+        nodeService.upsertProperty(e.id(), new PropertyDto(F_PROT, PropertyType.NUMBER, String.valueOf(proteina == null ? 0 : proteina)));
+        return foodDay(f);
+    }
+
+    /** Remove a food entry; returns the updated day summary. */
+    @Transactional
+    public FoodDaySummary deleteFood(UUID id) {
+        String f = prop(id, S_FECHA);
+        requireNode(id);
+        nodeService.delete(id);
+        return foodDay(f == null ? LocalDate.now().toString() : f);
+    }
+
+    private Node registroContainer() {
+        Node root = getOrCreateRoot();
+        return childByTitle(root, REGISTRO).orElseGet(() -> {
+            Node created = requireNode(nodeService.create(new CreateNodeRequest(REGISTRO,
+                    "<p>Diario de comidas: lo que comes de verdad, con kcal. Añádelo desde el panel.</p>",
+                    null, PageLayout.TABLE, root.getId(), List.of(AREA_TAG))).id());
+            nodeService.setSchema(created.getId(), List.of(
+                    new SchemaField(S_FECHA, PropertyType.DATE, null),
+                    new SchemaField(F_NOMBRE, PropertyType.TEXT, null),
+                    new SchemaField(F_KCAL, PropertyType.NUMBER, null),
+                    new SchemaField(F_PROT, PropertyType.NUMBER, null)));
+            return created;
+        });
     }
 
     /** Save a day's menu under Comidas (replacing any existing one for that date). */
@@ -658,6 +744,8 @@ public class SaludService {
         setIfMissing(planId, P_DIAS, PropertyType.NUMBER, "6");
         setIfMissing(planId, P_SEMANA, PropertyType.NUMBER, "1");
         setIfMissing(planId, P_SEMANAS_TOTAL, PropertyType.NUMBER, "7");
+        setIfMissing(planId, P_KCAL, PropertyType.NUMBER, "2000");
+        setIfMissing(planId, P_PROT, PropertyType.NUMBER, "150");
     }
 
     private void seedTopes(Node ejercicios) {

@@ -129,6 +129,27 @@ export interface MealIdea {
   descripcion: string;
 }
 
+export interface FoodEntry {
+  id: string;
+  nombre: string;
+  kcal: number;
+  proteina: number;
+}
+
+export interface FoodDaySummary {
+  date: string;
+  targetKcal: number;
+  totalKcal: number;
+  targetProtein: number;
+  totalProtein: number;
+  entries: FoodEntry[];
+}
+
+export interface MealEstimate {
+  kcal: number;
+  proteina: number;
+}
+
 export interface PageRef {
   id: string;
   title: string;

@@ -4,6 +4,7 @@ import com.engram.ai.AiCompletionResult;
 import com.engram.ai.AiException;
 import com.engram.ai.AiJson;
 import com.engram.ai.AiTask;
+import com.engram.web.dto.MealEstimate;
 import com.engram.web.dto.MealIdea;
 import com.engram.web.dto.NodeResponse;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -103,6 +104,20 @@ public class SaludAiService {
         appendMeal(html, "Merienda", j.path("merienda").asText(""));
         appendMeal(html, "Cena", j.path("cena").asText(""));
         return saludService.saveDayMenu(day, "Menú " + day, html.toString());
+    }
+
+    /** Estimate kcal + protein for one normal serving of a dish. */
+    public MealEstimate estimate(UUID userId, String dish) {
+        if (dish == null || dish.isBlank()) {
+            throw new AiException("Falta el plato a estimar");
+        }
+        String system = """
+                Estima las calorías (kcal) y la proteína (g) de UNA ración normal del plato indicado.
+                Responde SOLO con JSON: {"kcal":0,"proteina_g":0}.
+                """;
+        AiCompletionResult res = aiService.run(userId, AiTask.INGESTION, system, "Plato: " + dish, 200);
+        JsonNode j = readJson(res.text());
+        return new MealEstimate(j.path("kcal").asInt(0), j.path("proteina_g").asInt(0));
     }
 
     // --- helpers -------------------------------------------------------------

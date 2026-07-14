@@ -344,6 +344,16 @@ export const api = {
     updateSession: (id: string, body: { fecha?: string; tipo?: string; objetivo?: string; estado?: string }) =>
       request<NodeResponse>(`/salud/sessions/${id}`, { method: "PUT", body: JSON.stringify(body) }),
     deleteSession: (id: string) => request<void>(`/salud/sessions/${id}`, { method: "DELETE" }),
+    foodToday: () => request<import("./types").FoodDaySummary>("/salud/food"),
+    addFood: (body: { fecha?: string; nombre: string; kcal?: number; proteina?: number }) =>
+      request<import("./types").FoodDaySummary>("/salud/food", { method: "POST", body: JSON.stringify(body) }),
+    deleteFood: (id: string) =>
+      request<import("./types").FoodDaySummary>(`/salud/food/${id}`, { method: "DELETE" }),
+    aiEstimate: (dish: string) =>
+      request<import("./types").MealEstimate>("/salud/ai/estimate", {
+        method: "POST",
+        body: JSON.stringify({ dish }),
+      }),
   },
   github: {
     import: (repo: string) =>
